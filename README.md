@@ -34,6 +34,8 @@ In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più 
 - **Zone** di battuta (sinistra, centro, destra), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
 - Il fondamentale **Muro**: punto, normale (palla recuperata) o sbagliato.
 - **Side-out e break point**, serie di punti e grafico dell'andamento di ogni set (basta indicare chi batte per primo nel set).
+- **Formazione e rotazioni**: a inizio set si apre il campo dove inserire i sei in campo, il libero e chi batte per primo. Lo scout mostra solo chi è in campo e la rotazione gira da sola quando conquistiamo il servizio (ogni punto va registrato). Con **Cambio** registri sostituzioni e doppi cambi; si può correggere la formazione e la rotazione in ogni momento. In Statistiche trovi il rendimento per rotazione (side-out, break point, saldo, ricezione, attacco). Si può spegnere in Impostazioni.
+- **Archivio e stagione**: con **Nuova partita** la partita finisce nella scheda **Stagione**, con risultato, side-out e break point e il rendimento di ogni atleta nella stagione, partita per partita. Avversario, data e casa/trasferta si inseriscono in Impostazioni. Da Stagione puoi riaprire o eliminare una partita ed esportare/importare un **backup** per spostare i dati su un altro dispositivo.
 
 Tutto compare anche nel PDF.
 
