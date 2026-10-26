@@ -27,6 +27,16 @@ Puoi anche aggiungere, modificare o eliminare le giocatrici a mano, e segnare ch
 5. Un set finisce a 25 con 2 punti di scarto (il quinto a 15); la partita a 3 set.
 6. Le bande passano da S1 a S2 e i liberi da L1 a L2 dalle Impostazioni.
 
+## Modalità avanzata (facoltativa)
+
+In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più alti si aggiunge:
+
+- **Zone** di battuta (sinistra, centro, destra), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
+- Il fondamentale **Muro**: punto, normale (palla recuperata) o sbagliato.
+- **Side-out e break point**, serie di punti e grafico dell'andamento di ogni set (basta indicare chi batte per primo nel set).
+
+Tutto compare anche nel PDF.
+
 ## Statistiche e PDF
 
 Nella scheda **Statistiche** vedi i numeri per giocatrice, per set e per partita, e l'efficienza di squadra. Il pulsante **PDF** salva o condivide il report della partita.
