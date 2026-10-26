@@ -32,6 +32,8 @@ Puoi anche aggiungere, modificare o eliminare gli atleti a mano, e segnare chi �
 In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più alti si aggiunge:
 
 - **Zone** di battuta (zona in cui arriva la palla), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
+- **Attacchi sbagliati**: si indica la zona di partenza e se l'attacco è stato *murato*, *a rete* o *fuori*; il conteggio compare nelle statistiche e nel PDF.
+- **Attacco sporcato**: esito arancione per l'attacco toccato dal muro con la palla che torna da noi (nessun punto, conta come neutro).
 - **Battute sbagliate**: si sceglie se la palla è andata *in rete* o *fuori*; il conteggio compare nelle statistiche e nel PDF.
 - **Cambi**: elenco con set, punteggio (noi–loro) al momento del cambio, chi esce, chi entra e orario, anche nel PDF.
 - **Falli**: un pulsante *Falli* sotto i fondamentali apre *4 tocchi* (di squadra), *Doppia* e *Trattenuta* (assegnati all'atleta). Ogni fallo è un punto per loro; il conteggio compare in Statistiche e nel PDF.

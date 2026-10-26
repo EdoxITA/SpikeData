@@ -455,7 +455,7 @@ var BASE=[];
 var FUND=[
  {k:'B',n:'Battuta',   eff:'a', lab:{'+':'Ace','.':'Di là, no ace','-':'Errore'}},
  {k:'R',n:'Ricezione', eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Ricezione brutta'}, ace:'Ace subito'},
- {k:'A',n:'Attacco',   eff:'a', lab:{'+':'Punto','.':'Di là, no punto','-':'Errore / murato'}},
+ {k:'A',n:'Attacco',   eff:'a', lab:{'+':'Punto','.':'Di là, no punto','-':'Errore / murato'}, dirty:'Sporcato, torna da noi',dirtyS:'Sporcato'},
  {k:'D',n:'Difesa',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Difesa brutta'}, ace:'Errore (punto)'},
  {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}},
  {k:'P',n:'Appoggio',  eff:'p', lab:{'+':'Buono','.':'Neutro','-':'Errore'}},
@@ -471,8 +471,8 @@ var OLAB={'+':'Bene','.':'Neutro','-':'Errore'};
 var OSYM={'+':'+','.':'•','-':'−'};
 var COL={'+':'var(--o-hash)','.':'var(--o-neu)','-':'var(--o-err)'};
 function two(f){return f==='R'||f==='D'}
-function ocol(e){return (two(e.f)&&e.o==='-'&&!e.ace)?'var(--o-minus)':COL[e.o]}
-function osym(e){return (two(e.f)&&e.ace)?'✕':OSYM[e.o]}
+function ocol(e){return (e.sp||(two(e.f)&&e.o==='-'&&!e.ace))?'var(--o-minus)':COL[e.o]}
+function osym(e){return e.sp?'↩':(two(e.f)&&e.ace)?'✕':OSYM[e.o]}
 
 var state={events:[],set:1,score:{},roles:{},auto:true,adv:false,extra:[],edits:{},absent:{},rally:[],first:{},lineup:{},subs:[],rot:true,meta:{opp:'',date:'',home:''},mid:null,updated:0};
 var ui={zo:null,zp:null,fPl:null,delArm:null,edit:null,msgE:'',player:null,fund:null,tab:'scout',fSet:'all',fFund:'B',flash:'',sPl:null,sFund:'B',arDel:null,lu:null,sub:null,bench:false,luAsked:{},fl:false,allF:null};
@@ -501,7 +501,7 @@ function famOpts(p){return (p.r==='L1'||p.r==='L2')?['L1','L2']:isCen(p.r)?['C1'
 function roleOf(n){var p=pl(n);if(!p)return 'C';var r=state.roles&&state.roles[n];if(r&&famOpts(p).indexOf(r)>=0)return r;return p.r}
 function tagOf(n){return {P:'P',B:'B',S1:'S1',S2:'S2',C:'CE',C1:'C1',C2:'C2',O:'OP',L1:'L1',L2:'L2'}[roleOf(n)]||''}
 function allowed(n,k){return n!=null&&ALLOW[roleOf(n)].indexOf(k)>=0}
-function lab(e){if(e.ace&&two(e.f))return fd(e.f).ace;return fd(e.f).lab[e.o]||OLAB[e.o]}
+function lab(e){if(e.sp&&fd(e.f).dirty)return fd(e.f).dirty;if(e.ace&&two(e.f))return fd(e.f).ace;return fd(e.f).lab[e.o]||OLAB[e.o]}
 function pname(n){var p=pl(n);return p?p.s:'?'}
 
 /* ---- persistence ---- */
@@ -548,12 +548,12 @@ function addScore(set,side,d){
   if(d>0&&setOver(set))return false;
   var s=JSON.parse(JSON.stringify(sc(set)));s[side]=Math.max(0,s[side]+d);state.score[set]=s;return true;
 }
-function addEvent(o,ace){
+function addEvent(o,ace,sp){
   if(ui.player==null||!ui.fund)return;
-  ace=!!ace&&two(ui.fund)&&o==='-';
+  ace=!!ace&&two(ui.fund)&&o==='-';sp=!!sp&&ui.fund==='A'&&o==='.';
   var f=ui.fund,pt=state.auto?autoPt(f,o,ace):null;
   if(state.meta&&!state.meta.date)state.meta.date=todayISO();
-  var e={t:Date.now(),set:state.set,p:ui.player,f:f,o:o};if(ace)e.ace=1;e.ri=ralOf(state.set).length;e.si=opsOf(state.set).length;
+  var e={t:Date.now(),set:state.set,p:ui.player,f:f,o:o};if(ace)e.ace=1;if(sp)e.sp=1;e.ri=ralOf(state.set).length;e.si=opsOf(state.set).length;
   if(pt&&addScore(state.set,pt,1)){e.pt=pt;state.rally.push({set:state.set,w:pt,si:opsOf(state.set).length})}else pt=null;
   state.events.push(e);
   ui.flash={t:'✓ '+e.p+' '+pname(e.p)+' · '+fd(f).n+' · '+lab(e)+(pt?' · punto '+(pt==='us'?'a noi':'a loro'):''),c:ocol(e)};
@@ -634,6 +634,15 @@ function renderZone(){
   h+='<div class="zph"><span><b>Zone</b> · '+e.p+' '+pname(e.p)+' · '+fd(e.f).n+'</span><button class="zskip" data-act="zskip">Salta</button></div>';
   if(serve&&e.o==='-'){
     h+='<div class="note">Dove è finita la battuta sbagliata?</div><div class="chips serr"><button data-act="serr" data-v="n" aria-pressed="'+(e.er==='n')+'">In rete</button><button data-act="serr" data-v="f" aria-pressed="'+(e.er==='f')+'">Fuori</button></div>';
+  }else if(e.f==='A'&&e.sp){
+    h+='<div class="note">Da che zona attacchi? (palla tornata da noi)</div><div class="zct"><div class="znet" title="rete"></div><div class="zg">';
+    ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});
+    h+='</div><div class="zlab">NOI</div></div>';
+  }else if(e.f==='A'&&e.o==='-'){
+    h+='<div class="note">Da che zona attacchi e com’è finito l’attacco?</div><div class="chips serr"><button data-act="aerr" data-v="m" aria-pressed="'+(e.er==='m')+'">Murato</button><button data-act="aerr" data-v="n" aria-pressed="'+(e.er==='n')+'">A rete</button><button data-act="aerr" data-v="f" aria-pressed="'+(e.er==='f')+'">Fuori</button></div>';
+    h+='<div class="zct"><div class="znet" title="rete"></div><div class="zg">';
+    ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});
+    h+='</div><div class="zlab">NOI</div></div>';
   }else if(rec){
     h+='<div class="note">Tocca la zona del nostro campo in cui è arrivata la battuta.</div><div class="zct"><div class="znet" title="rete"></div><div class="zg">';
     ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});
@@ -651,7 +660,8 @@ function renderZone(){
   if(wasH){try{el.scrollIntoView({block:'end',behavior:'smooth'})}catch(x){}}
 }
 function serr(e){return e.f==='B'&&e.o==='-'&&e.er?(e.er==='n'?'in rete':'fuori'):''}
-function zoneText(e){if(serr(e))return serr(e);if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
+function aerr(e){return e.f==='A'&&e.o==='-'&&e.er?({m:'murato',n:'a rete',f:'fuori'})[e.er]||'':''}
+function zoneText(e){if(serr(e))return serr(e);if(aerr(e))return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+aerr(e);if(e.sp)return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+'sporcato';if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
 function renderFirst(){
   var el=$('firstBar');if(!state.adv){el.hidden=true;el.innerHTML='';return}
   var set=state.set,ex=state.first&&state.first[set],fs=firstOf(set),h;
@@ -664,22 +674,22 @@ function renderFirst(){
   el.innerHTML=lh+h;el.hidden=false;
 }
 function srvNow(set){var r=ralOf(set);return r.length?r[r.length-1].w:firstOf(set)}
-var PH=null;
+var PHS=null;
 function isRecv(n){return ['B','S1','S2','L1','L2'].indexOf(roleOf(n))>=0}
 function phaseNow(){
   if(!state.adv||!state.rot||!lu(state.set))return null;
   var set=state.set,ri=ralOf(set).length,sv=srvNow(set);
   if(!sv||ui.allF===set+':'+ri)return null;
-  var cur=state.events.filter(function(e){return e.set===set&&e.ri===ri});
+  var nf=state.events.filter(function(e){return e.set===set&&e.ri===ri&&!isFault(e)});
   if(sv==='us'){
-    var nf=cur.filter(function(e){return !isFault(e)});
     if(!nf.length)return 'srv0';
     var hasB=nf.some(function(e){return e.f==='B'}),other=nf.some(function(e){return e.f!=='B'});
-    return hasB&&!other?'srv1':null;
-  }
-  return cur.some(function(e){return !isFault(e)})?null:'rec';
+    if(hasB&&!other)return 'srv1';
+  }else if(!nf.length)return 'rec';
+  var f=nf.length?nf[nf.length-1].f:null;
+  return (f==='R'||f==='D'||f==='P'||f==='Z')?'two':null;
 }
-function phOk(k){return PH==='srv0'?k==='B':PH==='srv1'?(k==='D'||k==='M'||k==='P'):PH==='rec'?k==='R':true}
+function phOk(k){return PHS==='srv0'?k==='B':PHS==='two'?(k==='Z'||k==='A'||k==='P'):PHS==='srv1'?(k==='D'||k==='M'||k==='P'):PHS==='rec'?k==='R':true}
 function autoSrv(C){
   if(!C)return;
   var key=state.set+':'+ralOf(state.set).length+':'+opsOf(state.set).length+':'+C.srv+':'+C.view[0];
@@ -689,8 +699,8 @@ function autoSrv(C){
 }
 function renderScout(){
   var h='',C=(state.adv&&state.rot&&lu(state.set))?courtAt(state.set):null;
-  autoSrv(C);PH=phaseNow();HS=hsNow();
-  if(PH==='rec'){var rk=state.set+':'+ralOf(state.set).length;if(ui.rcKey!==rk){ui.rcKey=rk;ui.player=null;ui.fund=null}}else ui.rcKey=null;
+  autoSrv(C);PHS=phaseNow();HS=hsNow();
+  if(PHS==='rec'){var rk=state.set+':'+ralOf(state.set).length;if(ui.rcKey!==rk){ui.rcKey=rk;ui.player=null;ui.fund=null}}else ui.rcKey=null;
   if(C)h=courtScout(C);else
   roster().forEach(function(p){
     if(!isHere(p.n))return;
@@ -699,7 +709,7 @@ function renderScout(){
   });
   if(!h)h='<div class="card emptyplayers"><h2>Nessun atleta</h2><div class="note">Importa la distinta da un file PDF, Excel o CSV, oppure aggiungi i nomi a mano.</div><button class="btn solid" data-act="gotoset">Vai a Impostazioni</button></div>';
   $('players').innerHTML=h;
-  var fb=PH;
+  var fb=PHS;
   if(ui.fund&&!phOk(ui.fund))ui.fund=null;
   h='';funds().forEach(function(f){var ok=(ui.player==null||allowed(ui.player,f.k))&&phOk(f.k);
     h+='<button data-act="fund" data-k="'+f.k+'" aria-pressed="'+(ui.fund===f.k)+'"'+(ok?'':' disabled')+'>'+f.n+'</button>'});
@@ -715,12 +725,13 @@ function renderScout(){
     var l=(F&&F.lab[o])||OLAB[o];
     h+='<button class="out" data-act="out" data-o="'+o+'"'+((F&&F.ace&&o==='-')?' data-brut="1"':'')+(ready?'':' disabled')+'><span class="sym">'+OSYM[o]+'</span><span class="lb">'+l+'</span></button>';
   });
+  if(F&&F.dirty)h+='<button class="out" data-act="out" data-o="." data-sp="1" data-brut="1"'+(ready?'':' disabled')+'><span class="sym">↩</span><span class="lb">'+F.dirtyS+'</span></button>';
   if(F&&F.ace)h+='<button class="out" data-act="out" data-o="-" data-ace="1"'+(ready?'':' disabled')+'><span class="sym">✕</span><span class="lb">'+F.ace+'</span></button>';
-  $('outs').className='outs'+(F&&F.ace?' r4':'');
+  $('outs').className='outs'+(F&&(F.ace||F.dirty)?' r4':'');
   $('outs').innerHTML=h;
   var p=ui.player!=null?pl(ui.player):null;
   $('hint').innerHTML=ready?('<b>'+p.s+' '+p.n+'</b> · '+F.n+': scegli l’esito'):
-    (p?('<b>'+p.s+' '+p.n+'</b> selezionata: scegli il fondamentale'):(PH==='rec'?'<b>Ricezione</b>: tocca chi riceve (in evidenza)':'Tocca un’atleta per iniziare'));
+    (p?('<b>'+p.s+' '+p.n+'</b> selezionata: scegli il fondamentale'):(PHS==='rec'?'<b>Ricezione</b>: tocca chi riceve (in evidenza)':'Tocca un’atleta per iniziare'));
   renderZone();renderFirst();
   var fl=$('flash');fl.textContent=ui.flash?ui.flash.t:'';fl.style.color=ui.flash?ui.flash.c:'';
   var ev=state.events.slice(-5).reverse();
@@ -910,6 +921,8 @@ function zoneRows(list,fk,which){
   return {rows:rows,tot:tot};
 }
 function serveErr(list){var r={n:0,f:0,x:0,tot:0};list.forEach(function(e){if(e.f!=='B'||e.o!=='-')return;r.tot++;if(e.er==='n')r.n++;else if(e.er==='f')r.f++;else r.x++});return r}
+function attErr(list){var r={m:0,n:0,f:0,x:0,tot:0};list.forEach(function(e){if(e.f!=='A'||e.o!=='-')return;r.tot++;if(e.er==='m')r.m++;else if(e.er==='n')r.n++;else if(e.er==='f')r.f++;else r.x++});return r}
+function attErrText(r){return '<b>'+r.tot+'</b> '+(r.tot===1?'attacco sbagliato':'attacchi sbagliati')+': <b>'+r.m+'</b> murati, <b>'+r.n+'</b> a rete, <b>'+r.f+'</b> fuori'+(r.x?', '+r.x+' non indicati':'')}
 function serveErrText(r){return '<b>'+r.tot+'</b> '+(r.tot===1?'battuta sbagliata':'battute sbagliate')+': <b>'+r.n+'</b> in rete, <b>'+r.f+'</b> fuori'+(r.x?', '+r.x+' non indicate':'')}
 function zcfgs(fk){return fk==='B'?[['a','Lato di battuta'],['b','Zone in cui batti di più']]:[['a','Da dove attacca'],['b','Dove cade l’attacco']]}
 function zlbl(fk,w,z){return (fk==='B'&&w==='a')?SVL[z]:'Zona '+z}
@@ -937,7 +950,10 @@ function renderZoneDet(list){
   });
   var SE=serve?serveErr(src):null;
   if(SE&&SE.tot)h+='<h3>Battute sbagliate</h3><div class="zsum">'+serveErrText(SE)+'</div>';
-  if(!any&&!(SE&&SE.tot))h+='<div class="note">Nessuna zona registrata per questa selezione.</div>';
+  var AE=fk==='A'?attErr(src):null,AD=fk==='A'?src.filter(function(e){return e.f==='A'&&e.sp}).length:0;
+  if(AD)h+='<h3>Attacchi sporcati</h3><div class="zsum"><b>'+AD+'</b> '+(AD===1?'attacco sporcato':'attacchi sporcati')+' (palla tornata da noi)</div>';
+  if(AE&&AE.tot)h+='<h3>Attacchi sbagliati</h3><div class="zsum">'+attErrText(AE)+'</div>';
+  if(!any&&!(SE&&SE.tot)&&!(AE&&AE.tot)&&!AD)h+='<div class="note">Nessuna zona registrata per questa selezione.</div>';
   if(any)h+='<div class="note" style="margin-top:6px">Zone ordinate dalla più '+(rec?'colpita':'usata')+'. La barra mostra come sono finite le azioni in quella zona.'+(rec?'':' Zone di arrivo numerate dalla loro parte.')+' L’atleta si sceglie nei pulsanti sopra la mappa.</div>';
   el.innerHTML=h;el.hidden=false;
 }
@@ -1206,12 +1222,14 @@ function buildPdf(){
     heading(P,st,'Squadra · partita completa');
     table(P,st,detailCols('Fondamentale'),detailRows(ev,fl,null,null));
     if(state.adv){
-      var zs=['B','A','R'].map(function(k){return ev.filter(function(e){return e.f===k&&zhas(e)})}),se=serveErr(ev);
-      if(zs[0].length||zs[1].length||zs[2].length||se.tot){
+      var zs=['B','A','R'].map(function(k){return ev.filter(function(e){return e.f===k&&zhas(e)})}),se=serveErr(ev),ae=attErr(ev),ad=ev.filter(function(e){return e.f==='A'&&e.sp}).length;
+      if(zs[0].length||zs[1].length||zs[2].length||se.tot||ae.tot||ad){
         heading(P,st,'Zone \u00b7 partita completa');
         if(zs[0].length){ensure(P,st,150);pdfZoneRow(P,st,'B',zs[0])}
         if(se.tot){ensure(P,st,30);P.text(PM,st.y+8,'Battute sbagliate: '+se.tot+' ('+se.n+' in rete, '+se.f+' fuori'+(se.x?', '+se.x+' non indicate':'')+')',9,true,OC['-']);st.y+=24}
         if(zs[1].length){ensure(P,st,215);pdfZoneRow(P,st,'A',zs[1])}
+        if(ad){ensure(P,st,30);P.text(PM,st.y+8,'Attacchi sporcati (palla tornata da noi): '+ad,9,true,ORC);st.y+=24}
+        if(ae.tot){ensure(P,st,30);P.text(PM,st.y+8,'Attacchi sbagliati: '+ae.tot+' ('+ae.m+' murati, '+ae.n+' a rete, '+ae.f+' fuori'+(ae.x?', '+ae.x+' non indicati':'')+')',9,true,OC['-']);st.y+=24}
         if(zs[2].length){ensure(P,st,125);var hr=pdfRecvCourt(P,PM,st.y,58,30,zs[2],'Ricezione \u00b7 '+zs[2].length+' con zona');
           P.text(PM+220,st.y+30,'Ricezione: in ogni zona del nostro campo il numero',8,false,MUTEC);P.text(PM+220,st.y+42,'di ricezioni e la percentuale di quelle buone (+).',8,false,MUTEC);st.y+=hr+14}
         P.text(PM,st.y,'In ogni zona il numero \u00e8 quante volte; la barra sotto mostra l\u2019esito: verde punto/ace, giallo normale/di l\u00e0, rosso errore. Zone di arrivo numerate dalla loro parte.',7.5,false,MUTEC);st.y+=16;
@@ -1477,7 +1495,7 @@ function hsNow(){
   if(!nf.length)return false;
   var f=nf[nf.length-1].f;return f==='R'||f==='D'||f==='P';
 }
-function rcCls(n){return PH==='rec'?(isRecv(n)?' rcv':' norcv'):(HS&&roleOf(n)==='P'?' rcv':'')}
+function rcCls(n){return PHS==='rec'?(isRecv(n)?' rcv':' norcv'):(HS&&roleOf(n)==='P'?' rcv':'')}
 function sBtn(n,lab,cls,nohl){var p=pl(n),nm=p?p.s+(p.cap?' ©':''):'?';
   return '<button class="pl'+(cls||'')+(nohl?'':rcCls(n))+'" data-act="player" data-n="'+n+'" aria-pressed="'+(ui.player===n)+'" aria-label="'+n+' '+nm+'">'+(lab?'<span class="pz">'+lab+'</span>':'')+'<span class="tag">'+tagOf(n)+'</span><span class="n">'+n+'</span><span class="s">'+nm+'</span></button>'}
 function courtScout(C){
@@ -1617,11 +1635,16 @@ document.addEventListener('click',function(ev){
   if(a==='first'){state.first=state.first||{};state.first[state.set]=b.getAttribute('data-v');persist();render();return}
   if(a==='zskip'){var ze=ui.zp&&ui.zp.e;if(ze&&ze.z&&!ze.z.a&&!ze.z.b)delete ze.z;ui.zp=null;persist();render();return}
   if(a==='serr'){var se0=ui.zp&&ui.zp.e;if(!se0)return;se0.er=b.getAttribute('data-v');ui.flash={t:'✓ Battuta sbagliata '+(se0.er==='n'?'in rete':'fuori')+' · '+se0.p+' '+pname(se0.p),c:ocol(se0)};ui.zp=null;persist();render();return}
+  if(a==='aerr'){var ae0=ui.zp&&ui.zp.e;if(!ae0)return;ae0.er=ae0.er===b.getAttribute('data-v')?null:b.getAttribute('data-v');if(!ae0.er)delete ae0.er;
+    if(ae0.er&&ae0.z&&ae0.z.a){ui.flash={t:'✓ Attacco sbagliato: '+aerr(ae0)+' da zona '+ae0.z.a+' · '+ae0.p+' '+pname(ae0.p),c:ocol(ae0)};ui.zp=null}
+    persist();render();return}
   if(a==='zone'){var ze2=ui.zp&&ui.zp.e;if(!ze2)return;var zs=b.getAttribute('data-s'),zn=+b.getAttribute('data-z');ze2.z=ze2.z||{a:null,b:null};
     if(zs==='us')ze2.z.a=ze2.z.a===zn?null:zn;else ze2.z.b=ze2.z.b===zn?null:zn;
+    if(ze2.f==='A'&&ze2.sp){if(ze2.z.a){ui.flash={t:'✓ Attacco sporcato da zona '+ze2.z.a+' · '+ze2.p+' '+pname(ze2.p),c:ocol(ze2)};ui.zp=null}persist();render();return}
+    if(ze2.f==='A'&&ze2.o==='-'){if(ze2.z.a&&ze2.er){ui.flash={t:'✓ Attacco sbagliato: '+aerr(ze2)+' da zona '+ze2.z.a+' · '+ze2.p+' '+pname(ze2.p),c:ocol(ze2)};ui.zp=null}persist();render();return}
     if((ze2.f==='B'&&ze2.z.b)||(ze2.f!=='B'&&ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:ze2.f==='B'?'✓ Battuta in zona '+ze2.z.b:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:ocol(ze2)};ui.zp=null}
     persist();render();return}
-  if(a==='player'){ui.zp=null;var pn=+b.getAttribute('data-n');ui.player=(ui.player===pn&&!ui.fund)?null:pn;if(ui.player!=null&&!ui.fund&&PH==='rec'&&allowed(pn,'R'))ui.fund='R';render();return}
+  if(a==='player'){ui.zp=null;var pn=+b.getAttribute('data-n');ui.player=(ui.player===pn&&!ui.fund)?null:pn;if(ui.player!=null&&!ui.fund&&PHS==='rec'&&allowed(pn,'R'))ui.fund='R';render();return}
   if(a==='role'){state.roles[+b.getAttribute('data-n')]=b.getAttribute('data-r');persist();render();return}
   if(a==='edit'){ui.edit=+b.getAttribute('data-n');ui.msgE='';ui.delArm=null;render();return}
   if(a==='editcancel'){ui.edit=null;ui.msgE='';ui.delArm=null;render();return}
@@ -1640,8 +1663,8 @@ document.addEventListener('click',function(ev){
   if(a==='fault'){addFault(b.getAttribute('data-k'));return}
   if(a==='faults'){ui.fl=!ui.fl;render();return}
   if(a==='unlock'){ui.allF=state.set+':'+ralOf(state.set).length;render();return}
-  if(a==='fund'){ui.zp=null;var k=b.getAttribute('data-k');ui.fund=(ui.fund===k&&!(PH==='rec'&&k==='R'))?null:k;render();return}
-  if(a==='out'){addEvent(b.getAttribute('data-o'),b.getAttribute('data-ace')==='1');return}
+  if(a==='fund'){ui.zp=null;var k=b.getAttribute('data-k');ui.fund=(ui.fund===k&&!((PHS==='rec'&&k==='R')||(PHS==='srv0'&&k==='B')))?null:k;render();return}
+  if(a==='out'){addEvent(b.getAttribute('data-o'),b.getAttribute('data-ace')==='1',b.getAttribute('data-sp')==='1');return}
   if(a==='fset'){var v=b.getAttribute('data-v');ui.fSet=v==='all'?'all':+v;ui.zo=null;render();return}
   if(a==='ffund'){ui.fFund=b.getAttribute('data-k');ui.zo=null;render();return}
   if(a==='mhome'){var hv=b.getAttribute('data-v');state.meta=state.meta||{};state.meta.home=state.meta.home===hv?'':hv;persist();render();return}
