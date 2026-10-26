@@ -25,7 +25,7 @@ Puoi anche aggiungere, modificare o eliminare gli atleti a mano, e segnare chi �
 3. Il punteggio si aggiorna da solo: un **+** in battuta o attacco dà un punto a noi, ogni **−** dà un punto a loro. Si può disattivare in Impostazioni.
 4. Con **Annulla** togli l'ultima azione, e anche il punto collegato.
 5. Un set finisce a 25 con 2 punti di scarto (il quinto a 15); la partita a 3 set.
-6. Le bande passano da S1 a S2 e i liberi da L1 a L2 dalle Impostazioni.
+6. Le bande passano da S1 a S2, i centrali da C1 a C2 e i liberi da L1 a L2 dalle Impostazioni.
 
 ## Modalità avanzata (facoltativa)
 
@@ -38,6 +38,7 @@ In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più 
 - Il fondamentale **Muro**: punto, normale (palla recuperata) o sbagliato.
 - **Side-out e break point**, serie di punti e grafico dell'andamento di ogni set (basta indicare chi batte per primo nel set).
 - **Formazione e rotazioni**: a inizio set si apre il campo dove inserire i sei in campo, il libero e chi batte per primo. Lo scout mostra solo chi è in campo e la rotazione gira da sola quando conquistiamo il servizio (ogni punto va registrato). Con **Cambio** registri sostituzioni e doppi cambi; si può correggere la formazione e la rotazione in ogni momento. In Statistiche trovi il rendimento per rotazione (side-out, break point, saldo, ricezione, attacco). Si può spegnere in Impostazioni.
+- **Battitore automatico**: con la formazione inserita, quando batte la nostra squadra l'atleta al servizio è già selezionata con *Battuta*: basta toccare l'esito. Se tocchi un'altra atleta, la scelta resta tua.
 - **Archivio e stagione**: con **Nuova partita** la partita finisce nella scheda **Stagione**, con risultato, side-out e break point e il rendimento di ogni atleta nella stagione, partita per partita. Avversario, data e casa/trasferta si inseriscono in Impostazioni. Da Stagione puoi riaprire o eliminare una partita ed esportare/importare un **backup** per spostare i dati su un altro dispositivo.
 
 Tutto compare anche nel PDF.

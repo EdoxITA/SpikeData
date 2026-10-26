@@ -415,7 +415,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
       <button id="advBtn" data-act="adv" aria-pressed="false">Spenta</button>
     </div>
     <div class="card"><h2>Rosa e ruoli</h2>
-      <div class="note" style="margin-bottom:6px">Con “Presente” spento l’atleta sparisce dallo scout. Le bande cambiano tra S1 e S2, i liberi tra L1 e L2. Palleggio, centrali e opposti restano fissi.</div>
+      <div class="note" style="margin-bottom:6px">Con “Presente” spento l’atleta sparisce dallo scout. Le bande cambiano tra S1 e S2, i centrali tra C1 e C2, i liberi tra L1 e L2. Palleggio e opposti restano fissi.</div>
       <div id="roles"></div>
     </div>
     <div class="card"><h2>Aggiungi atleta</h2>
@@ -457,10 +457,10 @@ var FUND=[
  {k:'M',n:'Muro',       eff:'p', adv:true, lab:{'+':'Muro punto','.':'Muro normale, palla recuperata','-':'Muro sbagliato (fuori da noi)'}}
 ];
 function funds(ev){return FUND.filter(function(f){return !f.adv||state.adv||(ev||state.events).some(function(e){return e.f===f.k})})}
-var ROLES={P:'Palleggio',S1:'Banda S1',S2:'Banda S2',C:'Centrale',O:'Opposto',L1:'Libero L1',L2:'Libero L2'};
+var ROLES={P:'Palleggio',S1:'Banda S1',S2:'Banda S2',C:'Centrale',C1:'Centrale C1',C2:'Centrale C2',O:'Opposto',L1:'Libero L1',L2:'Libero L2'};
 var ALL=['B','R','A','D','Z','P','M'];
 var LIB=['D','R','P','Z'];
-var ALLOW={P:ALL,B:ALL,S1:ALL,S2:ALL,C:ALL,O:ALL,L1:LIB,L2:LIB};
+var ALLOW={P:ALL,B:ALL,S1:ALL,S2:ALL,C:ALL,C1:ALL,C2:ALL,O:ALL,L1:LIB,L2:LIB};
 var OUTS=['+','.','-'];
 var OLAB={'+':'Bene','.':'Neutro','-':'Errore'};
 var OSYM={'+':'+','.':'•','-':'−'};
@@ -491,9 +491,10 @@ function fd(k){for(var i=0;i<FUND.length;i++)if(FUND[i].k===k)return FUND[i];for
 function sc(set){return state.score[set]||{us:0,them:0}}
 function setOver(set){var s=sc(set),t=set===5?15:25,m=Math.max(s.us,s.them);if(m>=t&&Math.abs(s.us-s.them)>=2)return s.us>s.them?'us':'them';return null}
 function isHere(n){return !(state.absent&&state.absent[n])}
-function famOpts(p){return (p.r==='L1'||p.r==='L2')?['L1','L2']:(p.r==='B'||p.r==='S1'||p.r==='S2')?['S1','S2']:[]}
+function isCen(r){return r==='C'||r==='C1'||r==='C2'}
+function famOpts(p){return (p.r==='L1'||p.r==='L2')?['L1','L2']:isCen(p.r)?['C1','C2']:(p.r==='B'||p.r==='S1'||p.r==='S2')?['S1','S2']:[]}
 function roleOf(n){var p=pl(n);if(!p)return 'C';var r=state.roles&&state.roles[n];if(r&&famOpts(p).indexOf(r)>=0)return r;return p.r}
-function tagOf(n){return {P:'P',B:'B',S1:'S1',S2:'S2',C:'CE',O:'OP',L1:'L1',L2:'L2'}[roleOf(n)]||''}
+function tagOf(n){return {P:'P',B:'B',S1:'S1',S2:'S2',C:'CE',C1:'C1',C2:'C2',O:'OP',L1:'L1',L2:'L2'}[roleOf(n)]||''}
 function allowed(n,k){return n!=null&&ALLOW[roleOf(n)].indexOf(k)>=0}
 function lab(e){if(e.ace&&two(e.f))return fd(e.f).ace;return fd(e.f).lab[e.o]||OLAB[e.o]}
 function pname(n){var p=pl(n);return p?p.s:'?'}
@@ -657,8 +658,16 @@ function renderFirst(){
     lh=C?'':'<div class="chips" style="margin-bottom:8px"><button data-act="luopen">Inserisci formazione</button></div>'}
   el.innerHTML=lh+h;el.hidden=false;
 }
+function autoSrv(C){
+  if(!C)return;
+  var key=state.set+':'+ralOf(state.set).length+':'+opsOf(state.set).length+':'+C.srv+':'+C.view[0];
+  if(ui.asKey===key)return;ui.asKey=key;
+  if(C.srv==='us'&&C.view[0]!=null&&isHere(C.view[0])){ui.player=C.view[0];ui.fund='B';ui.asP=C.view[0]}
+  else{if(ui.asP!=null&&ui.player===ui.asP&&(ui.fund==null||ui.fund==='B')){ui.player=null;ui.fund=null}ui.asP=null}
+}
 function renderScout(){
   var h='',C=(state.adv&&state.rot&&lu(state.set))?courtAt(state.set):null;
+  autoSrv(C);
   if(C)h=courtScout(C);else
   roster().forEach(function(p){
     if(!isHere(p.n))return;
@@ -1332,7 +1341,7 @@ function lu(set){var l=state.lineup&&state.lineup[set];return l&&l.start&&l.star
 function opsOf(set){return (state.subs||[]).filter(function(o){return o.set===set})}
 function ralOf(set){return state.rally.filter(function(r){return r.set===set})}
 function isLib(n){var r=roleOf(n);return r==='L1'||r==='L2'}
-function libFlag(L,n){return L.rep&&L.rep[n]!=null?!!L.rep[n]:roleOf(n)==='C'}
+function libFlag(L,n){return L.rep&&L.rep[n]!=null?!!L.rep[n]:isCen(roleOf(n))}
 function courtAt(set,ri,si){
   var L=lu(set);if(!L)return null;
   var ops=opsOf(set),pos=L.start.slice(),lib=L.lib!=null?L.lib:null,shift=0,i;
@@ -1368,7 +1377,7 @@ function openLu(set){
     rep:b&&b.rep?JSON.parse(JSON.stringify(b.rep)):{},sel:null,first:firstOf(set)||null,edit:!!L};
   var e0=ui.lu.pos.indexOf(null);ui.lu.sel=e0>=0?e0:null;
 }
-function luRep(U,n){return U.rep[n]!=null?!!U.rep[n]:roleOf(n)==='C'}
+function luRep(U,n){return U.rep[n]!=null?!!U.rep[n]:isCen(roleOf(n))}
 function candBtn(n,cls,act,extra){var p=pl(n);return '<button class="pl'+(cls||'')+'" data-act="'+act+'" data-n="'+n+'"'+(extra||'')+'><span class="tag">'+tagOf(n)+'</span><span class="n">'+n+'</span><span class="s">'+(p?p.s:'?')+'</span></button>'}
 function luHtml(){
   var U=ui.lu,h='<div class="sin"><div class="srow"><h1>Set '+U.set+' · formazione</h1><button class="btn" data-act="luclose">'+(U.edit?'Chiudi':'Più tardi')+'</button></div>';
