@@ -31,7 +31,9 @@ Puoi anche aggiungere, modificare o eliminare gli atleti a mano, e segnare chi �
 
 In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più alti si aggiunge:
 
-- **Zone** di battuta (sinistra, centro, destra), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
+- **Zone** di battuta (zona in cui arriva la palla), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
+- **Battute sbagliate**: si sceglie se la palla è andata *in rete* o *fuori*; il conteggio compare nelle statistiche e nel PDF.
+- **Cambi**: elenco con set, punteggio (noi–loro) al momento del cambio, chi esce, chi entra e orario, anche nel PDF.
 - Il fondamentale **Muro**: punto, normale (palla recuperata) o sbagliato.
 - **Side-out e break point**, serie di punti e grafico dell'andamento di ogni set (basta indicare chi batte per primo nel set).
 - **Formazione e rotazioni**: a inizio set si apre il campo dove inserire i sei in campo, il libero e chi batte per primo. Lo scout mostra solo chi è in campo e la rotazione gira da sola quando conquistiamo il servizio (ogni punto va registrato). Con **Cambio** registri sostituzioni e doppi cambi; si può correggere la formazione e la rotazione in ogni momento. In Statistiche trovi il rendimento per rotazione (side-out, break point, saldo, ricezione, attacco). Si può spegnere in Impostazioni.

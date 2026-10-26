@@ -56,6 +56,12 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .pts{font-family:var(--f-disp);font-weight:700;font-size:56px;line-height:1;font-variant-numeric:tabular-nums;min-width:1.3ch;text-align:center}
 .step{width:52px;height:52px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-family:var(--f-disp);font-weight:700;font-size:30px;line-height:1}
 .step.plus{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.step{position:relative;padding:0;font-size:0;color:var(--ink);display:block}
+.step::before,.step::after{content:"";position:absolute;left:50%;top:50%;background:currentColor;border-radius:2px;transform:translate(-50%,-50%)}
+.step::before{width:40%;height:3px}
+.step::after{width:3px;height:40%}
+.step:not(.plus)::after{display:none}
+.step.plus{color:var(--accent-ink)}
 .sets{display:flex;gap:6px;justify-content:center}
 .sets button{min-width:46px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-family:var(--f-disp);font-weight:600;font-size:20px}
 .sets button{position:relative}
@@ -233,6 +239,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
 .fbar .chips{margin-top:6px}.fbar .chips button{height:34px;font-size:13px;padding:0 12px}.fbar .note{margin-top:4px}
 .zp{margin-top:12px;border:1px solid var(--accent);border-radius:12px;background:var(--surface);padding:10px 12px}
 .zph{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px}
+.serr{display:grid;grid-template-columns:1fr 1fr;gap:10px}.serr button{height:64px;font-size:20px;border-radius:14px}
 .zph .zskip{height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px}
 .zp .note{margin:2px 0 8px}
 .zct{width:min(100%,240px);margin:0 auto}
@@ -319,9 +326,9 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 <div class="wrap">
   <header class="top">
     <div class="scorebar">
-      <div class="team"><button class="step" data-act="pt" data-side="us" data-d="-1" aria-label="Togli punto a noi">−</button><div><div class="lbl">Noi</div><div class="pts" id="ptsUs">0</div></div><button class="step plus" data-act="pt" data-side="us" data-d="1" aria-label="Punto a noi">+</button></div>
+      <div class="team"><button class="step" data-act="pt" data-side="us" data-d="-1" aria-label="Togli punto a noi"></button><div><div class="lbl">Noi</div><div class="pts" id="ptsUs">0</div></div><button class="step plus" data-act="pt" data-side="us" data-d="1" aria-label="Punto a noi"></button></div>
       <div class="sets" id="sets" role="group" aria-label="Set"></div>
-      <div class="team right"><button class="step" data-act="pt" data-side="them" data-d="-1" aria-label="Togli punto a loro">−</button><div style="text-align:right"><div class="lbl">Loro</div><div class="pts" id="ptsThem">0</div></div><button class="step plus" data-act="pt" data-side="them" data-d="1" aria-label="Punto a loro">+</button></div>
+      <div class="team right"><button class="step" data-act="pt" data-side="them" data-d="-1" aria-label="Togli punto a loro"></button><div style="text-align:right"><div class="lbl">Loro</div><div class="pts" id="ptsThem">0</div></div><button class="step plus" data-act="pt" data-side="them" data-d="1" aria-label="Punto a loro"></button></div>
     </div>
     <div class="setbanner" id="setBanner" hidden></div>
     <div class="bar2">
@@ -357,6 +364,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
     <div class="zmap zdet" id="zdet" hidden></div>
     <div class="zmap" id="rally" hidden></div>
     <div class="zmap zdet" id="rotStat" hidden></div>
+    <div class="zmap zdet" id="subStat" hidden></div>
     <div class="actions">
       <button class="btn solid" id="pdf">Salva PDF</button>
     </div>
@@ -588,7 +596,7 @@ function renderHeader(){
 /* ---- zone (modalità avanzata) ---- */
 var ZUS=[[4,3,2],[5,6,1]];   /* nostro campo, rete in alto: davanti 3 m, dietro 6 m */
 var ZTH=[[1,6,5],[2,3,4]];   /* loro campo visto da noi, rete in basso */
-function zhas(e){return e.z&&(e.z.a||e.z.b)}
+function zhas(e){return e.z&&(e.f==='B'?!!e.z.b:(e.z.a||e.z.b))}
 var SVL={5:'Sinistra',6:'Centro',1:'Destra'};
 function zbtn(side,z,cur,lb){return '<button class="zc'+(side==='th'?' th':'')+((z===5||z===6||z===1)?' bk':'')+(lb?' lbl':'')+'" data-act="zone" data-s="'+side+'" data-z="'+z+'" aria-pressed="'+(cur===z)+'" aria-label="'+(lb?'Battuta da '+lb.toLowerCase():'Zona '+z+(side==='th'?' loro':' nostra'))+'">'+(lb||z)+'</button>'}
 function renderZone(){
@@ -596,23 +604,26 @@ function renderZone(){
   if(!state.adv||!zp||!last||last!==zp.e){ui.zp=null;var was=!el.hidden;el.hidden=true;el.innerHTML='';if(was&&window.innerWidth<=900){try{window.scrollTo({top:0,behavior:'smooth'})}catch(x){window.scrollTo(0,0)}}return}
   var e=zp.e,z=e.z||{},serve=e.f==='B',rec=e.f==='R',h='';
   h+='<div class="zph"><span><b>Zone</b> · '+e.p+' '+pname(e.p)+' · '+fd(e.f).n+'</span><button class="zskip" data-act="zskip">Salta</button></div>';
-  if(rec){
+  if(serve&&e.o==='-'){
+    h+='<div class="note">Dove è finita la battuta sbagliata?</div><div class="chips serr"><button data-act="serr" data-v="n" aria-pressed="'+(e.er==='n')+'">In rete</button><button data-act="serr" data-v="f" aria-pressed="'+(e.er==='f')+'">Fuori</button></div>';
+  }else if(rec){
     h+='<div class="note">Tocca la zona del nostro campo in cui è arrivata la battuta.</div><div class="zct"><div class="znet" title="rete"></div><div class="zg">';
     ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});
     h+='</div><div class="zlab">NOI</div></div>';
   }else{
-  h+='<div class="note">'+(serve?'Tocca da che lato batti (sinistra, centro, destra) e dove arriva la palla.':'Tocca da dove attacchi (4-3-2 prima linea, 6 pipe, 1 o 5 seconda linea) e dove cade la palla.')+' Zone di arrivo numerate dalla loro parte.</div><div class="zct">';
+  h+='<div class="note">'+(serve?'Tocca la zona in cui arriva la battuta.':'Tocca da dove attacchi (4-3-2 prima linea, 6 pipe, 1 o 5 seconda linea) e dove cade la palla.')+' Zone di arrivo numerate dalla loro parte.</div><div class="zct">';
   h+='<div class="zlab">LORO</div><div class="zg">';
   ZTH.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('th',n,z.b)})});
   h+='</div><div class="znet" title="rete"></div>';
-  if(serve){h+='<div class="zlab">LATO DI BATTUTA</div><div class="zg">';[5,6,1].forEach(function(n){h+=zbtn('us',n,z.a,SVL[n])});h+='</div>'}
+  if(serve){}
   else{h+='<div class="zg">';ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});h+='</div><div class="zlab">NOI</div>'}
   h+='</div>';
   }
   var wasH=el.hidden;el.innerHTML=h;el.hidden=false;
   if(wasH){try{el.scrollIntoView({block:'end',behavior:'smooth'})}catch(x){}}
 }
-function zoneText(e){if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;var a=e.z.a?(e.f==='B'?{5:'Sx',6:'C',1:'Dx'}[e.z.a]:e.z.a):'–';return a+'→'+(e.z.b||'–')}
+function serr(e){return e.f==='B'&&e.o==='-'&&e.er?(e.er==='n'?'in rete':'fuori'):''}
+function zoneText(e){if(serr(e))return serr(e);if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
 function renderFirst(){
   var el=$('firstBar');if(!state.adv){el.hidden=true;el.innerHTML='';return}
   var set=state.set,ex=state.first&&state.first[set],fs=firstOf(set),h;
@@ -654,7 +665,7 @@ function renderScout(){
   if(!ev.length){$('log').innerHTML='<div class="empty">Nessuna azione registrata.</div>'}
   else{h='';ev.forEach(function(e){
     h+='<div class="row"><span class="badge" style="background:'+ocol(e)+'">'+osym(e)+'</span>'+
-      '<span class="what"><b>'+e.p+' '+pname(e.p)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zhas(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></div>'});
+      '<span class="what"><b>'+e.p+' '+pname(e.p)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zoneText(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></div>'});
     $('log').innerHTML=h}
 }
 function filtered(){return state.events.filter(function(e){return ui.fSet==='all'||e.set===ui.fSet})}
@@ -689,7 +700,7 @@ function renderStats(){
   else{t+='</tbody><tfoot><tr><td>Squadra</td><td class="num">'+tot.tot+'</td>';
     cols.forEach(function(k){t+='<td>'+tot[k[0]]+'</td>'});t+='<td class="eff">'+pct(effOf(tot,F.eff))+'</td></tr></tfoot>'}
   $('tbl').innerHTML=t;
-  renderZoneMap(list);renderZoneDet(list);renderRally();renderRotStats();
+  renderZoneMap(list);renderZoneDet(list);renderRally();renderRotStats();renderSubStats();
   $('effNote').textContent=F.eff==='a'?
     'Efficienza = (punti − errori) ÷ azioni, mai sotto lo 0%. + punto, − errore.':
     (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':'Positività = azioni buone (+) ÷ azioni totali.');
@@ -718,9 +729,9 @@ function zoneMapSVG(list,serve,sel){
   evs.forEach(function(e){if(e.z.a)oc[e.z.a]=(oc[e.z.a]||0)+1});
   evs.forEach(function(e){if(!e.z.b||(sel!=null&&e.z.a!==sel))return;var d=dc[e.z.b]||(dc[e.z.b]={n:0,p:0,d:0,e:0});d.n++;if(e.o==='+')d.p++;else if(e.o==='-')d.e++;else d.d++});
   for(i in oc)mx=Math.max(mx,oc[i]);var mxd=1;for(i in dc)mxd=Math.max(mxd,dc[i].n);
-  var netY=top+hB+hF,oy=netY+10,H=serve?oy+64+22:oy+hF+hB+24;
+  var netY=top+hB+hF,oy=netY+10,H=serve?netY+10:oy+hF+hB+24;
   s='<svg class="zc" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Mappa zone">';
-  s+='<text x="'+W/2+'" y="15" text-anchor="middle" style="fill:var(--mute);font:700 11px var(--f-body);letter-spacing:.08em">LORO · DOVE CADE</text>';
+  s+='<text x="'+W/2+'" y="15" text-anchor="middle" style="fill:var(--mute);font:700 11px var(--f-body);letter-spacing:.08em">'+(serve?'LORO · DOVE ARRIVA LA BATTUTA':'LORO · DOVE CADE')+'</text>';
   for(r=0;r<2;r++)for(c=0;c<3;c++){
     var z=ZTH[r][c],d=dc[z],n=d?d.n:0,x=c*CWm,y=r?top+hB:top,h=r?hF:hB;
     s+='<g'+(n?' class="dn" data-n="'+n+'"':'')+'><rect x="'+(x+2)+'" y="'+(y+2)+'" width="'+(CWm-4)+'" height="'+(h-4)+'" rx="8" style="fill:var(--accent);fill-opacity:'+(n?(.1+.4*n/mxd).toFixed(2):.05)+';stroke:var(--line)"/>';
@@ -738,8 +749,7 @@ function zoneMapSVG(list,serve,sel){
     return '<g'+(n?' data-act="zo" data-z="'+z+'" style="cursor:pointer" role="button" aria-pressed="'+on+'" aria-label="'+(label||'Zona '+z)+', '+n+' azioni"':'')+'><rect x="'+(x+2)+'" y="'+(y+2)+'" width="'+(w-4)+'" height="'+(h-4)+'" rx="8" style="fill:var(--accent);fill-opacity:'+(on?.75:(n?(.12+.42*n/mx).toFixed(2):.05))+';stroke:'+(on?'var(--ink)':'var(--line)')+';stroke-width:'+(on?3:1)+(dim?';opacity:.55':'')+'"/>'+
       '<text x="'+(x+10)+'" y="'+(y+18)+'" style="fill:'+(on?'#fff':'var(--mute)')+';font:600 11px var(--f-body)">'+(label||z)+'</text>'+
       (n?'<text x="'+(x+w/2)+'" y="'+(y+(h>70?h/2+10:h-14))+'" text-anchor="middle" style="fill:'+(on?'#fff':'var(--ink)')+';font:700 24px var(--f-disp)'+(dim?';opacity:.6':'')+'">'+n+'</text>':'')+'</g>'}
-  if(serve){for(i=0;i<3;i++)s+=ocell([5,6,1][i],i*CWm,oy,CWm,64,SVL[[5,6,1][i]]);
-    s+='<text x="'+W/2+'" y="'+(H-6)+'" text-anchor="middle" style="fill:var(--mute);font:700 11px var(--f-body);letter-spacing:.08em">NOI · DA DOVE BATTI</text>'}
+  if(serve){}
   else{for(r=0;r<2;r++)for(c=0;c<3;c++)s+=ocell(ZUS[r][c],c*CWm,r?oy+hF:oy,CWm,r?hB:hF);
     s+='<text x="'+W/2+'" y="'+(H-8)+'" text-anchor="middle" style="fill:var(--mute);font:700 11px var(--f-body);letter-spacing:.08em">NOI · DA DOVE PARTE</text>'}
   return s+'</svg>';
@@ -819,12 +829,12 @@ function renderZoneMap(list){
     h+='<div class="note" style="text-align:center;margin-top:4px">'+use.length+' di '+all.length+' ricezioni con zona. In ogni zona: % di ricezioni buone (+) e quante volte la battuta è arrivata lì.</div>';
   }else{
     if(ui.zo!=null&&!use.some(function(e){return e.z&&e.z.a===ui.zo}))ui.zo=null;
-    var sel=ui.zo,sub=use.filter(function(e){return e.z&&e.z.b&&(sel==null||e.z.a===sel)}),T={p:0,d:0,e:0};
+    var sel=serve?null:ui.zo,sub=use.filter(function(e){return e.z&&e.z.b&&(sel==null||e.z.a===sel)}),T={p:0,d:0,e:0};
     sub.forEach(function(e){if(e.o==='+')T.p++;else if(e.o==='-')T.e++;else T.d++});
-    h+='<div class="note" style="margin:2px 0 4px">'+(serve?'Tocca un lato di battuta':'Tocca una zona del nostro campo')+' per vedere dove sono finite le azioni partite da lì. Tocca di nuovo per tornare a tutte.</div>';
+    if(!serve)h+='<div class="note" style="margin:2px 0 4px">Tocca una zona del nostro campo per vedere dove sono finite le azioni partite da lì. Tocca di nuovo per tornare a tutte.</div>';
     h+=zoneMapSVG(use,serve,sel);
     h+='<div class="zleg"><span style="color:var(--o-hash)">■ '+(serve?'ace':'punto')+'</span><span style="color:#b98700">■ '+(serve?'di là, senza ace':'attacco normale')+'</span><span style="color:var(--o-err)">■ errore</span></div>';
-    h+='<div class="zsum" style="text-align:center">'+(sel==null?'Tutte le zone':'Da <b>'+(serve?SVL[sel]:'zona '+sel)+'</b>')+': <b>'+sub.length+'</b> con arrivo · <b style="color:var(--o-hash)">'+T.p+'</b> '+(serve?'ace':'punto')+(sub.length?' ('+Math.round(T.p/sub.length*100)+'%)':'')+', <b style="color:#b98700">'+T.d+'</b> normali, <b style="color:var(--o-err)">'+T.e+'</b> errori</div>';
+    h+='<div class="zsum" style="text-align:center">'+(sel==null?(serve?'Battute':'Tutte le zone'):'Da <b>zona '+sel+'</b>')+': <b>'+sub.length+'</b> con arrivo · <b style="color:var(--o-hash)">'+T.p+'</b> '+(serve?'ace':'punto')+(sub.length?' ('+Math.round(T.p/sub.length*100)+'%)':'')+', <b style="color:#b98700">'+T.d+'</b> normali, <b style="color:var(--o-err)">'+T.e+'</b> errori</div>';
     h+='<div class="note" style="text-align:center;margin-top:4px">'+use.length+' di '+all.length+' azioni con zona. Il numero è quante volte; la barra sotto il numero mostra come sono finite. Zone di arrivo numerate dalla loro parte.</div>';
   }
   el.innerHTML=h;el.hidden=false;
@@ -837,6 +847,8 @@ function zoneRows(list,fk,which){
   rows.sort(function(a,b){return b.n-a.n||a.z-b.z});
   return {rows:rows,tot:tot};
 }
+function serveErr(list){var r={n:0,f:0,x:0,tot:0};list.forEach(function(e){if(e.f!=='B'||e.o!=='-')return;r.tot++;if(e.er==='n')r.n++;else if(e.er==='f')r.f++;else r.x++});return r}
+function serveErrText(r){return '<b>'+r.tot+'</b> '+(r.tot===1?'battuta sbagliata':'battute sbagliate')+': <b>'+r.n+'</b> in rete, <b>'+r.f+'</b> fuori'+(r.x?', '+r.x+' non indicate':'')}
 function zcfgs(fk){return fk==='B'?[['a','Lato di battuta'],['b','Zone in cui batti di più']]:[['a','Da dove attacca'],['b','Dove cade l’attacco']]}
 function zlbl(fk,w,z){return (fk==='B'&&w==='a')?SVL[z]:'Zona '+z}
 function renderZoneDet(list){
@@ -861,8 +873,10 @@ function renderZoneDet(list){
         '</div></td><td class="pc">'+Math.round(r.p/r.n*100)+'%</td></tr>'});
     h+='</tbody></table></div>';
   });
-  if(!any)h+='<div class="note">Nessuna zona registrata per questa selezione.</div>';
-  else h+='<div class="note" style="margin-top:6px">Zone ordinate dalla più '+(rec?'colpita':'usata')+'. La barra mostra come sono finite le azioni in quella zona.'+(rec?'':' Zone di arrivo numerate dalla loro parte.')+' L’atleta si sceglie nei pulsanti sopra la mappa.</div>';
+  var SE=serve?serveErr(src):null;
+  if(SE&&SE.tot)h+='<h3>Battute sbagliate</h3><div class="zsum">'+serveErrText(SE)+'</div>';
+  if(!any&&!(SE&&SE.tot))h+='<div class="note">Nessuna zona registrata per questa selezione.</div>';
+  if(any)h+='<div class="note" style="margin-top:6px">Zone ordinate dalla più '+(rec?'colpita':'usata')+'. La barra mostra come sono finite le azioni in quella zona.'+(rec?'':' Zone di arrivo numerate dalla loro parte.')+' L’atleta si sceglie nei pulsanti sopra la mappa.</div>';
   el.innerHTML=h;el.hidden=false;
 }
 function cap1(t){return t.replace(/(^|[\s'-])(\S)/g,function(m,a,c){return a+c.toUpperCase()})}
@@ -1006,7 +1020,7 @@ function pdfCourt(P,x,y,cw,f,list,serve,title){
   function shade(n){var t=n?.1+.32*n/mxo:.05;return [1-(1-.12)*t,1-(1-.31)*t,1-(1-.82)*t]}
   P.rect(x,top+3*f-1.5,W,3,INKC);
   var oy=top+3*f+4;
-  if(serve){[5,6,1].forEach(function(z,k){var n=oc[z]||0;P.rect(x+k*cw+1,oy,cw-2,28,shade(n));P.text(x+k*cw+4,oy+9,SVL[z],6,false,MUTEC);if(n)P.text(x+k*cw+cw/2,oy+22,String(n),11,true,INKC,'c')});return oy+28-y}
+  if(serve)return top+3*f+4-y;
   for(r=0;r<2;r++)for(c=0;c<3;c++){var z=ZUS[r][c],n=oc[z]||0,cy=r?oy+f:oy,hh=r?2*f:f;
     P.rect(x+c*cw+1,cy+1,cw-2,hh-2,shade(n));P.text(x+c*cw+4,cy+9,String(z),6,false,MUTEC);
     if(n)P.text(x+c*cw+cw/2,cy+hh/2+4,String(n),11,true,INKC,'c')}
@@ -1015,11 +1029,15 @@ function pdfCourt(P,x,y,cw,f,list,serve,title){
 function pdfZoneRow(P,st,fk,list){
   var serve=fk==='B',cw=58,f=30,y0=st.y,cm=36,fm=24,hF,hM=0,mx0=PM+3*cw+36;
   hF=pdfCourt(P,PM,y0,cw,f,list,serve,(serve?'Battuta':'Attacco')+' \u00b7 '+list.length+' con zona');
-  var D=zoneRows(list,fk,'a'),orig=serve?[5,6,1].map(function(z){return D.rows.filter(function(r){return r.z===z})[0]}).filter(Boolean):D.rows.slice(0,4);
-  P.text(mx0,y0+9,'Dove sono finite, per zona di partenza',8,true,MUTEC);
+  var D=zoneRows(list,fk,'a'),orig=serve?[]:D.rows.slice(0,4);
+  if(serve){var ac=0,nn=0,er=0;list.forEach(function(e){if(e.o==='+')ac++;else if(e.o==='-')er++;else nn++});
+    P.text(mx0,y0+9,'Battuta: zone in cui arriva la palla',8,true,MUTEC);
+    P.text(mx0,y0+24,'Verde = ace ('+ac+'), giallo = di l\u00e0 senza ace ('+nn+'), rosso = errore ('+er+').',8,false,MUTEC);
+    P.text(mx0,y0+37,'Zone numerate dalla loro parte; le battute sbagliate senza zona non sono contate.',7.5,false,MUTEC)}
+  else P.text(mx0,y0+9,'Dove sono finite, per zona di partenza',8,true,MUTEC);
   orig.forEach(function(o,i){
     var sub=list.filter(function(e){return e.z&&e.z.a===o.z});
-    var h=pdfMini(P,mx0+i*(3*cm+14),y0+20,cm,fm,sub,(serve?'Da '+SVL[o.z]:'Da zona '+o.z)+' \u00b7 '+o.n);hM=Math.max(hM,h+20)});
+    var h=pdfMini(P,mx0+i*(3*cm+14),y0+20,cm,fm,sub,('Da zona '+o.z)+' \u00b7 '+o.n);hM=Math.max(hM,h+20)});
   st.y=y0+Math.max(hF,hM)+14;
 }
 function zcfgList(){return [['A','a','Attacco · da dove parte'],['A','b','Attacco · dove cade'],['B','b','Battuta · zone di arrivo'],['R','a','Ricezione · dove arriva la battuta']]}
@@ -1126,10 +1144,11 @@ function buildPdf(){
     heading(P,st,'Squadra · partita completa');
     table(P,st,detailCols('Fondamentale'),detailRows(ev,fl,null,null));
     if(state.adv){
-      var zs=['B','A','R'].map(function(k){return ev.filter(function(e){return e.f===k&&zhas(e)})});
-      if(zs[0].length||zs[1].length||zs[2].length){
+      var zs=['B','A','R'].map(function(k){return ev.filter(function(e){return e.f===k&&zhas(e)})}),se=serveErr(ev);
+      if(zs[0].length||zs[1].length||zs[2].length||se.tot){
         heading(P,st,'Zone \u00b7 partita completa');
         if(zs[0].length){ensure(P,st,150);pdfZoneRow(P,st,'B',zs[0])}
+        if(se.tot){ensure(P,st,30);P.text(PM,st.y+8,'Battute sbagliate: '+se.tot+' ('+se.n+' in rete, '+se.f+' fuori'+(se.x?', '+se.x+' non indicate':'')+')',9,true,OC['-']);st.y+=24}
         if(zs[1].length){ensure(P,st,215);pdfZoneRow(P,st,'A',zs[1])}
         if(zs[2].length){ensure(P,st,125);var hr=pdfRecvCourt(P,PM,st.y,58,30,zs[2],'Ricezione \u00b7 '+zs[2].length+' con zona');
           P.text(PM+220,st.y+30,'Ricezione: in ogni zona del nostro campo il numero',8,false,MUTEC);P.text(PM+220,st.y+42,'di ricezioni e la percentuale di quelle buone (+).',8,false,MUTEC);st.y+=hr+14}
@@ -1155,8 +1174,9 @@ function buildPdf(){
 
     if(state.adv)pdfRally(P,st);
     if(state.adv&&state.rot)pdfRot(P,st);
+    if(state.adv&&state.rot)pdfSubs(P,st);
     sets.forEach(function(i){var l=ev.filter(setf(i));if(!l.length)return;
-      heading(P,st,'Squadra · set '+i);table(P,st,detailCols('Fondamentale'),detailRows(l,fl,null,null))});
+      ensure(P,st,160);heading(P,st,'Squadra · set '+i);table(P,st,detailCols('Fondamentale'),detailRows(l,fl,null,null))});
     roster().forEach(function(p){
       var mine=ev.filter(function(e){return e.p===p.n});if(!mine.length)return;
       var rows=detailRows(mine,fl,p.n,sets);
@@ -1442,6 +1462,28 @@ function pdfRot(P,st){
   P.text(PM,st.y,'Rotazione = zona del palleggio. Side-out = punti vinti in ricezione, break point = punti vinti in battuta, saldo = punti fatti meno subiti.',7.5,false,MUTEC);st.y+=16;
 }
 
+function subList(setF){
+  var r=[];(state.subs||[]).forEach(function(o){if(o.k!=='s')return;if(setF!=='all'&&o.set!==setF)return;r.push(o)});
+  r.sort(function(a,b){return a.set-b.set||(a.t||0)-(b.t||0)});return r;
+}
+function hhmm(t){if(!t)return '–';var d=new Date(t);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
+function subRow(o){var a=pl(o.o),b=pl(o.i);return {set:o.set,sc:o.sc||'–',out:o.o+' '+(a?a.s:'?'),inn:o.i+' '+(b?b.s:'?'),time:hhmm(o.t)}}
+function renderSubStats(){
+  var el=$('subStat');
+  if(!state.adv||!state.rot){el.hidden=true;el.innerHTML='';return}
+  var L=subList(ui.fSet);
+  if(!L.length){el.hidden=true;el.innerHTML='';return}
+  var h='<h2>Cambi</h2><div class="tw"><table><thead><tr><th>Set</th><th>Punteggio</th><th>Esce</th><th>Entra</th><th>Ora</th></tr></thead><tbody>';
+  L.forEach(function(o){var r=subRow(o);h+='<tr><td><b>'+r.set+'</b></td><td class="num">'+r.sc+'</td><td>'+r.out+'</td><td>'+r.inn+'</td><td>'+r.time+'</td></tr>'});
+  el.innerHTML=h+'</tbody></table></div><div class="note" style="margin-top:6px">Punteggio = noi–loro al momento del cambio.</div>';el.hidden=false;
+}
+function pdfSubs(P,st){
+  var L=subList('all');if(!L.length)return;
+  heading(P,st,'Cambi');
+  var cols=[{t:'Set',w:46,al:'l'},{t:'Punteggio (noi–loro)',w:110},{t:'Esce',w:170,al:'l'},{t:'Entra',w:170,al:'l'},{t:'Ora',w:56}];
+  table(P,st,cols,L.map(function(o){var r=subRow(o);return [{t:String(r.set),b:1},r.sc,r.out,r.inn,r.time]}));
+}
+
 /* ---- events ---- */
 var resetArmed=false;
 document.addEventListener('click',function(ev){
@@ -1479,9 +1521,10 @@ document.addEventListener('click',function(ev){
   if(a==='zo'){var zv=+b.getAttribute('data-z');ui.zo=ui.zo===zv?null:zv;render();return}
   if(a==='first'){state.first=state.first||{};state.first[state.set]=b.getAttribute('data-v');persist();render();return}
   if(a==='zskip'){var ze=ui.zp&&ui.zp.e;if(ze&&ze.z&&!ze.z.a&&!ze.z.b)delete ze.z;ui.zp=null;persist();render();return}
+  if(a==='serr'){var se0=ui.zp&&ui.zp.e;if(!se0)return;se0.er=b.getAttribute('data-v');ui.flash={t:'✓ Battuta sbagliata '+(se0.er==='n'?'in rete':'fuori')+' · '+se0.p+' '+pname(se0.p),c:ocol(se0)};ui.zp=null;persist();render();return}
   if(a==='zone'){var ze2=ui.zp&&ui.zp.e;if(!ze2)return;var zs=b.getAttribute('data-s'),zn=+b.getAttribute('data-z');ze2.z=ze2.z||{a:null,b:null};
     if(zs==='us')ze2.z.a=ze2.z.a===zn?null:zn;else ze2.z.b=ze2.z.b===zn?null:zn;
-    if((ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:ocol(ze2)};ui.zp=null}
+    if((ze2.f==='B'&&ze2.z.b)||(ze2.f!=='B'&&ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:ze2.f==='B'?'✓ Battuta in zona '+ze2.z.b:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:ocol(ze2)};ui.zp=null}
     persist();render();return}
   if(a==='player'){ui.zp=null;var pn=+b.getAttribute('data-n');ui.player=(ui.player===pn&&!ui.fund)?null:pn;render();return}
   if(a==='role'){state.roles[+b.getAttribute('data-n')]=b.getAttribute('data-r');persist();render();return}
