@@ -21,7 +21,7 @@ Puoi anche aggiungere, modificare o eliminare gli atleti a mano, e segnare chi �
 ## Come si usa
 
 1. Nella scheda **Scout** tocca l’atleta, poi il fondamentale (battuta, ricezione, attacco, difesa, alzata, appoggio), poi l'esito.
-2. Gli esiti sono tre: **+** (fatto bene: ace, punto, ricezione buona), **•** (neutro, o di là senza punto/ace) e **−** (errore).
+2. Gli esiti sono tre: **+** (fatto bene: ace, punto, ricezione buona), **•** (neutro, o di là senza punto/ace) e **−** (errore). In ricezione e in difesa il − si divide in **brutta** (arancione: la palla resta in gioco, nessun punto) ed errore con punto subito (rosso).
 3. Il punteggio si aggiorna da solo: un **+** in battuta o attacco dà un punto a noi, ogni **−** dà un punto a loro. Si può disattivare in Impostazioni.
 4. Con **Annulla** togli l'ultima azione, e anche il punto collegato.
 5. Un set finisce a 25 con 2 punti di scarto (il quinto a 15); la partita a 3 set.
@@ -34,6 +34,7 @@ In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più 
 - **Zone** di battuta (zona in cui arriva la palla), di attacco (da dove parte e dove cade) e di ricezione, con mappa del campo che si tocca per vedere dove sono finite le azioni.
 - **Battute sbagliate**: si sceglie se la palla è andata *in rete* o *fuori*; il conteggio compare nelle statistiche e nel PDF.
 - **Cambi**: elenco con set, punteggio (noi–loro) al momento del cambio, chi esce, chi entra e orario, anche nel PDF.
+- **Falli**: tre pulsanti sotto i fondamentali, *Fallo 4 tocchi* (di squadra), *Doppia* e *Trattenuta* (assegnati all'atleta). Ogni fallo è un punto per loro; il conteggio compare in Statistiche e nel PDF.
 - Il fondamentale **Muro**: punto, normale (palla recuperata) o sbagliato.
 - **Side-out e break point**, serie di punti e grafico dell'andamento di ogni set (basta indicare chi batte per primo nel set).
 - **Formazione e rotazioni**: a inizio set si apre il campo dove inserire i sei in campo, il libero e chi batte per primo. Lo scout mostra solo chi è in campo e la rotazione gira da sola quando conquistiamo il servizio (ogni punto va registrato). Con **Cambio** registri sostituzioni e doppi cambi; si può correggere la formazione e la rotazione in ogni momento. In Statistiche trovi il rendimento per rotazione (side-out, break point, saldo, ricezione, attacco). Si può spegnere in Impostazioni.
