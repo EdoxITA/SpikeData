@@ -89,6 +89,9 @@ h2{font-family:var(--f-disp);font-weight:600;font-size:15px;letter-spacing:.1em;
 .out .lb{font-size:12px;font-weight:600;text-align:center;padding-inline:2px}
 .out[data-o="+"]{background:var(--o-hash)} .out[data-o="."]{background:var(--o-neu)}
 .out[data-o="-"]{background:var(--o-err)}
+.out[data-brut]{background:var(--o-minus)}
+.out[data-ace]{box-shadow:inset 0 0 0 4px rgba(0,0,0,.3)}
+.outs.r4{grid-template-columns:repeat(2,minmax(0,1fr))}
 .out:disabled{opacity:.28}
 .flash{min-height:26px;font-weight:600;font-size:15px;margin-top:8px}
 .hint{color:var(--mute);font-size:14px;min-height:20px;margin-top:2px}
@@ -257,7 +260,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
 .zsum{font-size:15px;line-height:1.5;padding:8px 10px;border-radius:10px;background:var(--bg);margin:2px 0 4px}
 .sb{display:flex;height:30px;border-radius:7px;overflow:hidden;min-width:120px}
 .sb i{font-style:normal;display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff;min-width:22px}
-.sb i.g{background:var(--o-hash)} .sb i.y{background:#e0a800;color:#2b2100} .sb i.r{background:var(--o-err)}
+.sb i.g{background:var(--o-hash)} .sb i.y{background:#e0a800;color:#2b2100} .sb i.r{background:var(--o-err)} .sb i.o{background:var(--o-minus);color:#fff}
 .zrank{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;vertical-align:middle}
 .zleg{display:flex;gap:14px;justify-content:center;font-size:13px;color:var(--mute);margin-top:6px}
 
@@ -365,7 +368,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
 var BASE=[];
 var FUND=[
  {k:'B',n:'Battuta',   eff:'a', lab:{'+':'Ace','.':'Di là, no ace','-':'Errore'}},
- {k:'R',n:'Ricezione', eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore / ace subito'}},
+ {k:'R',n:'Ricezione', eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Ricezione brutta'}, ace:'Ace subito'},
  {k:'A',n:'Attacco',   eff:'a', lab:{'+':'Punto','.':'Di là, no punto','-':'Errore / murato'}},
  {k:'D',n:'Difesa',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}},
  {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}},
@@ -381,6 +384,8 @@ var OUTS=['+','.','-'];
 var OLAB={'+':'Bene','.':'Neutro','-':'Errore'};
 var OSYM={'+':'+','.':'•','-':'−'};
 var COL={'+':'var(--o-hash)','.':'var(--o-neu)','-':'var(--o-err)'};
+function ocol(e){return (e.f==='R'&&e.o==='-'&&!e.ace)?'var(--o-minus)':COL[e.o]}
+function osym(e){return (e.f==='R'&&e.ace)?'✕':OSYM[e.o]}
 
 var state={events:[],set:1,score:{},roles:{},auto:true,adv:false,extra:[],edits:{},absent:{},rally:[],first:{},updated:0};
 var ui={zo:null,zp:null,fPl:null,delArm:null,edit:null,msgE:'',player:null,fund:null,tab:'scout',fSet:'all',fFund:'B',flash:''};
@@ -405,7 +410,7 @@ function famOpts(p){return (p.r==='L1'||p.r==='L2')?['L1','L2']:(p.r==='B'||p.r=
 function roleOf(n){var p=pl(n);if(!p)return 'C';var r=state.roles&&state.roles[n];if(r&&famOpts(p).indexOf(r)>=0)return r;return p.r}
 function tagOf(n){return {P:'P',B:'B',S1:'S1',S2:'S2',C:'CE',O:'OP',L1:'L1',L2:'L2'}[roleOf(n)]||''}
 function allowed(n,k){return n!=null&&ALLOW[roleOf(n)].indexOf(k)>=0}
-function lab(e){return fd(e.f).lab[e.o]||OLAB[e.o]}
+function lab(e){if(e.ace&&e.f==='R')return fd('R').ace;return fd(e.f).lab[e.o]||OLAB[e.o]}
 function pname(n){var p=pl(n);return p?p.s:'?'}
 
 /* ---- persistence ---- */
@@ -425,7 +430,7 @@ function flush(){
     function(){writing=false;setSaveState('Salvato su questo dispositivo (cloud non disponibile)')});
 }
 var OLDO={'#':'+','+':'+','!':'.','-':'-','=':'-'};
-function migrate(list){var r=[];list.forEach(function(e){if(!e)return;if(!OUTS_OK[e.o])e.o=OLDO[e.o]||'.';r.push(e)});return r}
+function migrate(list){var r=[];list.forEach(function(e){if(!e)return;if(e.f==='R'&&e.o==='-'&&e.pt==='them'&&!e.ace)e.ace=1;if(!OUTS_OK[e.o])e.o=OLDO[e.o]||'.';r.push(e)});return r}
 var OUTS_OK={'+':1,'.':1,'-':1};
 function adopt(d){
   state.events=Array.isArray(d.events)?migrate(d.events):[];
@@ -440,7 +445,8 @@ function applyRemote(d){
 }
 
 /* ---- actions ---- */
-function autoPt(f,o){
+function autoPt(f,o,ace){
+  if(f==='R'&&o==='-')return ace?'them':null;
   if(o==='-')return 'them';
   if(o==='+'&&(f==='B'||f==='A'||f==='M'))return 'us';
   return null;
@@ -450,13 +456,14 @@ function addScore(set,side,d){
   if(d>0&&setOver(set))return false;
   var s=JSON.parse(JSON.stringify(sc(set)));s[side]=Math.max(0,s[side]+d);state.score[set]=s;return true;
 }
-function addEvent(o){
+function addEvent(o,ace){
   if(ui.player==null||!ui.fund)return;
-  var f=ui.fund,pt=state.auto?autoPt(f,o):null;
-  var e={t:Date.now(),set:state.set,p:ui.player,f:f,o:o};
+  ace=!!ace&&ui.fund==='R'&&o==='-';
+  var f=ui.fund,pt=state.auto?autoPt(f,o,ace):null;
+  var e={t:Date.now(),set:state.set,p:ui.player,f:f,o:o};if(ace)e.ace=1;
   if(pt&&addScore(state.set,pt,1)){e.pt=pt;state.rally.push({set:state.set,w:pt})}else pt=null;
   state.events.push(e);
-  ui.flash={t:'✓ '+e.p+' '+pname(e.p)+' · '+fd(f).n+' · '+lab(e)+(pt?' · punto '+(pt==='us'?'a noi':'a loro'):''),c:COL[o]};
+  ui.flash={t:'✓ '+e.p+' '+pname(e.p)+' · '+fd(f).n+' · '+lab(e)+(pt?' · punto '+(pt==='us'?'a noi':'a loro'):''),c:ocol(e)};
   ui.fund=null;ui.zp=(state.adv&&(f==='B'||f==='A'||f==='R'))?{e:e}:null;persist();render();
 }
 function undo(){
@@ -562,8 +569,10 @@ function renderScout(){
   var ready=ui.player!=null&&ui.fund;var F=ui.fund?fd(ui.fund):null;
   h='';OUTS.forEach(function(o){
     var l=(F&&F.lab[o])||OLAB[o];
-    h+='<button class="out" data-act="out" data-o="'+o+'"'+(ready?'':' disabled')+'><span class="sym">'+OSYM[o]+'</span><span class="lb">'+l+'</span></button>';
+    h+='<button class="out" data-act="out" data-o="'+o+'"'+((F&&F.ace&&o==='-')?' data-brut="1"':'')+(ready?'':' disabled')+'><span class="sym">'+OSYM[o]+'</span><span class="lb">'+l+'</span></button>';
   });
+  if(F&&F.ace)h+='<button class="out" data-act="out" data-o="-" data-ace="1"'+(ready?'':' disabled')+'><span class="sym">✕</span><span class="lb">'+F.ace+'</span></button>';
+  $('outs').className='outs'+(F&&F.ace?' r4':'');
   $('outs').innerHTML=h;
   var p=ui.player!=null?pl(ui.player):null;
   $('hint').innerHTML=ready?('<b>'+p.s+' '+p.n+'</b> · '+F.n+': scegli l’esito'):
@@ -573,14 +582,14 @@ function renderScout(){
   var ev=state.events.slice(-5).reverse();
   if(!ev.length){$('log').innerHTML='<div class="empty">Nessuna azione registrata.</div>'}
   else{h='';ev.forEach(function(e){
-    h+='<div class="row"><span class="badge" style="background:'+COL[e.o]+'">'+OSYM[e.o]+'</span>'+
+    h+='<div class="row"><span class="badge" style="background:'+ocol(e)+'">'+osym(e)+'</span>'+
       '<span class="what"><b>'+e.p+' '+pname(e.p)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zhas(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></div>'});
     $('log').innerHTML=h}
 }
 function filtered(){return state.events.filter(function(e){return ui.fSet==='all'||e.set===ui.fSet})}
 function statsFor(list,pn,fk){
-  var c={'+':0,'.':0,'-':0,tot:0};
-  list.forEach(function(e){if(e.p===pn&&e.f===fk){c[e.o]++;c.tot++}});return c;
+  var c={'+':0,'.':0,'-':0,ace:0,bad:0,tot:0};
+  list.forEach(function(e){if(e.p===pn&&e.f===fk){c[e.o]++;c.tot++;if(e.ace)c.ace++;else if(e.f==='R'&&e.o==='-')c.bad++}});return c;
 }
 function effOf(c,type){
   if(!c.tot)return null;
@@ -593,25 +602,26 @@ function renderStats(){
   $('fSet').innerHTML=h;
   h='';funds().forEach(function(f){h+='<button data-act="ffund" data-k="'+f.k+'" aria-pressed="'+(ui.fFund===f.k)+'">'+f.n+'</button>'});
   $('fFund').innerHTML=h;
-  var F=fd(ui.fFund),list=filtered(),tot={'+':0,'.':0,'-':0,tot:0};
+  var F=fd(ui.fFund),list=filtered(),tot={'+':0,'.':0,'-':0,bad:0,ace:0,tot:0};
+  var cols=F.k==='R'?[['+','+',COL['+']],['.','•',COL['.']],['bad','Brutta','var(--o-minus)'],['ace','Ace','var(--o-err)']]:OUTS.map(function(o){return [o,OSYM[o],COL[o]]});
   var t='<thead><tr><th>Giocatrice</th><th>Tot</th>';
-  OUTS.forEach(function(o){t+='<th style="color:'+COL[o]+'">'+OSYM[o]+'</th>'});
+  cols.forEach(function(k){t+='<th style="color:'+k[2]+'">'+k[1]+'</th>'});
   t+='<th>'+(F.eff==='a'?'Eff.':'Pos.')+'</th></tr></thead><tbody>';
   roster().forEach(function(p){
     var c=statsFor(list,p.n,F.k);if(!c.tot)return;
-    OUTS.forEach(function(o){tot[o]+=c[o]});tot.tot+=c.tot;
+    ['+','.','-','bad','ace','tot'].forEach(function(k){tot[k]+=c[k]});
     t+='<tr><td><b>'+p.n+'</b> '+p.s+' <small class="note">'+tagOf(p.n)+'</small></td><td class="num">'+c.tot+'</td>';
-    OUTS.forEach(function(o){t+='<td class="'+(c[o]?'':'zero')+'">'+c[o]+'</td>'});
+    cols.forEach(function(k){t+='<td class="'+(c[k[0]]?'':'zero')+'">'+c[k[0]]+'</td>'});
     t+='<td class="eff">'+pct(effOf(c,F.eff))+'</td></tr>';
   });
-  if(!tot.tot){t+='<tr><td colspan="6" class="empty" style="text-align:left;position:static">Nessun dato per '+F.n.toLowerCase()+' in questa selezione.</td></tr></tbody>'}
+  if(!tot.tot){t+='<tr><td colspan="7" class="empty" style="text-align:left;position:static">Nessun dato per '+F.n.toLowerCase()+' in questa selezione.</td></tr></tbody>'}
   else{t+='</tbody><tfoot><tr><td>Squadra</td><td class="num">'+tot.tot+'</td>';
-    OUTS.forEach(function(o){t+='<td>'+tot[o]+'</td>'});t+='<td class="eff">'+pct(effOf(tot,F.eff))+'</td></tr></tfoot>'}
+    cols.forEach(function(k){t+='<td>'+tot[k[0]]+'</td>'});t+='<td class="eff">'+pct(effOf(tot,F.eff))+'</td></tr></tfoot>'}
   $('tbl').innerHTML=t;
   renderZoneMap(list);renderZoneDet(list);renderRally();
   $('effNote').textContent=F.eff==='a'?
     'Efficienza = (punti − errori) ÷ azioni, mai sotto lo 0%. + punto, − errore.':
-    'Positività = azioni buone (+) ÷ azioni totali.';
+    (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':'Positività = azioni buone (+) ÷ azioni totali.');
 }
 
 var YEL='#e0a800',YELP=[.88,.66,0];
@@ -749,9 +759,9 @@ function renderZoneMap(list){
   el.innerHTML=h;el.hidden=false;
 }
 function zoneRows(list,fk,which){
-  var evs=list.filter(function(e){return e.f===fk&&e.z&&e.z[which]}),m={},tot={n:0,p:0,d:0,e:0};
-  evs.forEach(function(e){var z=e.z[which],c=m[z]||(m[z]={z:z,n:0,p:0,d:0,e:0});c.n++;tot.n++;
-    if(e.o==='+'){c.p++;tot.p++}else if(e.o==='-'){c.e++;tot.e++}else{c.d++;tot.d++}});
+  var evs=list.filter(function(e){return e.f===fk&&e.z&&e.z[which]}),m={},tot={n:0,p:0,d:0,e:0,b:0};
+  evs.forEach(function(e){var z=e.z[which],c=m[z]||(m[z]={z:z,n:0,p:0,d:0,e:0,b:0});c.n++;tot.n++;
+    if(e.o==='+'){c.p++;tot.p++}else if(e.o==='-'){if(fk==='R'&&!e.ace){c.b++;tot.b++}else{c.e++;tot.e++}}else{c.d++;tot.d++}});
   var rows=[];for(var k in m)rows.push(m[k]);
   rows.sort(function(a,b){return b.n-a.n||a.z-b.z});
   return {rows:rows,tot:tot};
@@ -766,17 +776,17 @@ function renderZoneDet(list){
   var nm=who==null?'Squadra':(pl(who)?pl(who).n+' '+pl(who).s:'');
   var U=serve?'battute':rec?'ricezioni':'attacchi',PW_=serve?'ace':rec?'buone':'punto',DW=serve?'di là, senza ace':rec?'neutre':'attacco normale (di là, senza punto)',EW=rec?'errore / ace subito':'errore',PC=serve?'% ace':rec?'% buone':'% punto';
   var wn=serve?['b']:rec?['a']:['a','b'],h='<h2>Zone · '+fd(fk).n+' · '+nm+'</h2>',any=false;
-  var lg='<div class="zleg" style="justify-content:flex-start;margin:0 0 6px"><span style="color:var(--o-hash)">■ '+PW_+'</span><span style="color:#b98700">■ '+DW+'</span><span style="color:var(--o-err)">■ '+EW+'</span></div>';
+  var lg='<div class="zleg" style="justify-content:flex-start;margin:0 0 6px"><span style="color:var(--o-hash)">■ '+PW_+'</span><span style="color:#b98700">■ '+DW+'</span>'+(rec?'<span style="color:var(--o-minus)">■ ricezione brutta</span><span style="color:var(--o-err)">■ ace subito</span>':'<span style="color:var(--o-err)">■ '+EW+'</span>')+'</div>';
   wn.forEach(function(w){
     var D=zoneRows(src,fk,w);if(!D.tot.n)return;
     if(!any){any=true;h+=lg}
     var T=D.tot;
     h+='<h3>'+(serve?'Zone in cui batti di più':rec?'Dove arriva la battuta':(w==='a'?'Da dove attacca':'Dove cade l’attacco'))+'</h3>';
-    h+='<div class="zsum"><b>'+T.n+'</b> '+U+' con zona: <b style="color:var(--o-hash)">'+T.p+'</b> '+PW_+' ('+Math.round(T.p/T.n*100)+'%), <b style="color:#b98700">'+T.d+'</b> '+(rec?'neutre':'normali')+', <b style="color:var(--o-err)">'+T.e+'</b> errori</div>';
+    h+='<div class="zsum"><b>'+T.n+'</b> '+U+' con zona: <b style="color:var(--o-hash)">'+T.p+'</b> '+PW_+' ('+Math.round(T.p/T.n*100)+'%), <b style="color:#b98700">'+T.d+'</b> '+(rec?'neutre':'normali')+', '+(rec?'<b style="color:var(--o-minus)">'+T.b+'</b> brutte, <b style="color:var(--o-err)">'+T.e+'</b> ace subiti':'<b style="color:var(--o-err)">'+T.e+'</b> errori')+'</div>';
     h+='<div class="tw"><table><thead><tr><th>Zona</th><th>'+(U.charAt(0).toUpperCase()+U.slice(1))+'</th><th>Esiti</th><th>'+PC+'</th></tr></thead><tbody>';
     D.rows.forEach(function(r,i){
       h+='<tr><td><b>'+zlbl(fk,w,r.z)+'</b>'+(i===0?'<span class="zrank">'+(rec?'più colpita':'più usata')+'</span>':'')+'</td><td class="tt">'+r.n+'</td><td><div class="sb">'+
-        (r.p?'<i class="g" style="flex:'+r.p+'">'+r.p+'</i>':'')+(r.d?'<i class="y" style="flex:'+r.d+'">'+r.d+'</i>':'')+(r.e?'<i class="r" style="flex:'+r.e+'">'+r.e+'</i>':'')+
+        (r.p?'<i class="g" style="flex:'+r.p+'">'+r.p+'</i>':'')+(r.d?'<i class="y" style="flex:'+r.d+'">'+r.d+'</i>':'')+(r.b?'<i class="o" style="flex:'+r.b+'">'+r.b+'</i>':'')+(r.e?'<i class="r" style="flex:'+r.e+'">'+r.e+'</i>':'')+
         '</div></td><td class="pc">'+Math.round(r.p/r.n*100)+'%</td></tr>'});
     h+='</tbody></table></div>';
   });
@@ -812,7 +822,7 @@ function render(){
 /* ---- pdf ---- */
 var PW=842,PH=595,PM=36;
 var INKC=[.07,.125,.17],WHITE=[1,1,1],MUTEC=[.36,.42,.47],ZEB=[.94,.96,.97],HDR=[.87,.9,.92],LINEC=[.78,.82,.85];
-var OC={'+':[.11,.54,.29],'.':[.54,.56,.27],'-':[.76,.23,.19]};
+var OC={'+':[.11,.54,.29],'.':[.54,.56,.27],'-':[.76,.23,.19]},ORC=[.78,.4,.08];
 var WRm={'\u2022':350,' ':278,'!':278,'"':355,'#':556,'$':556,'%':889,'&':667,"'":191,'(':333,')':333,'*':389,'+':584,',':278,'-':333,'.':278,'/':278,':':278,';':278,'<':584,'=':584,'>':584,'?':556,'@':1015,'[':278,']':278,'_':556,
  A:667,B:667,C:722,D:722,E:667,F:611,G:778,H:722,I:278,J:500,K:667,L:556,M:833,N:722,O:778,P:667,Q:778,R:722,S:667,T:611,U:722,V:667,W:944,X:667,Y:667,Z:611,
  a:556,b:556,c:500,d:556,e:556,f:278,g:556,h:556,i:222,j:222,k:500,l:222,m:833,n:556,o:556,p:556,q:556,r:333,s:500,t:278,u:556,v:500,w:722,x:500,y:500,z:500};
@@ -849,7 +859,7 @@ Pdf.prototype.build=function(){
   add('trailer\n<< /Size '+(n+1)+' /Root 1 0 R >>\nstartxref\n'+xo+'\n%%EOF');
   var out=new Uint8Array(len),p=0;parts.forEach(function(b){out.set(b,p);p+=b.length});return out;
 };
-function cnt(list,fk,pn){var c={'+':0,'.':0,'-':0,tot:0};list.forEach(function(e){if(e.f===fk&&(pn==null||e.p===pn)){c[e.o]++;c.tot++}});return c}
+function cnt(list,fk,pn){var c={'+':0,'.':0,'-':0,ace:0,bad:0,tot:0};list.forEach(function(e){if(e.f===fk&&(pn==null||e.p===pn)){c[e.o]++;c.tot++;if(e.ace)c.ace++;else if(e.f==='R'&&e.o==='-')c.bad++}});return c}
 function playedSets(){var r=[];for(var i=1;i<=5;i++){var s=sc(i);if(s.us||s.them||state.events.some(function(e){return e.set===i}))r.push(i)}return r}
 function setf(i){return function(e){return e.set===i}}
 function cellTE(c,type){return c.tot?c.tot+' · '+pct(effOf(c,type)):'–'}
@@ -873,6 +883,7 @@ function detailCols(first,sets){
   if(sets)sets.forEach(function(i){cols.push({t:'Set '+i,w:60,al:'c'})});
   cols.push({t:'Tot',w:40,al:'c'});
   OUTS.forEach(function(o){cols.push({t:OSYM[o],w:38,al:'c',hc:OC[o]})});
+  cols.push({t:'Brutta',w:44,al:'c',hc:ORC},{t:'Ace',w:34,al:'c',hc:OC['-']});
   cols.push({t:'Eff./Pos.',w:60,al:'c'});return cols;
 }
 function detailRows(list,fl,pn,sets){
@@ -881,6 +892,7 @@ function detailRows(list,fl,pn,sets){
     var r=[{t:f.n,b:1}];
     if(sets)sets.forEach(function(i){r.push(cellTE(cnt(list.filter(setf(i)),f.k,pn),f.eff))});
     r.push({t:String(c.tot),b:1});OUTS.forEach(function(o){r.push({t:String(c[o]),c:c[o]?INKC:LINEC})});
+    if(f.k==='R'){r.push({t:String(c.bad),c:c.bad?INKC:LINEC});r.push({t:String(c.ace),c:c.ace?INKC:LINEC})}else{r.push({t:'\u2013',c:LINEC});r.push({t:'\u2013',c:LINEC})}
     r.push({t:pct(effOf(c,f.eff)),b:1});rows.push(r)});
   return rows;
 }
@@ -997,9 +1009,12 @@ function zoneBlocks(P,st,list,label){
       var fk=b.c[0],serve=fk==='B',rec=fk==='R',x0=PM+i*246;
       P.text(x0,y0+8,b.c[2],8,true,INKC);
       var U=serve?'Battute':rec?'Ricezioni':'Attacchi';
-      var cols=[{t:'Zona',w:58,al:'l'},{t:U,w:44,al:'c'},{t:serve?'Ace':rec?'Buone':'Punto',w:34,al:'c',hc:OC['+']},{t:rec?'Neutre':'Normali',w:44,al:'c',hc:YELP},{t:'Errori',w:34,al:'c',hc:OC['-']},{t:serve?'% ace':rec?'% buone':'% punto',w:32,al:'c'}];
-      var rows=b.D.rows.map(function(r,ri){return [{t:zlbl(fk,b.c[1],r.z),b:ri===0},{t:String(r.n),b:1},{t:String(r.p),c:r.p?INKC:LINEC},{t:String(r.d),c:r.d?INKC:LINEC},{t:String(r.e),c:r.e?INKC:LINEC},{t:Math.round(r.p/r.n*100)+'%',b:1}]});
-      var T=b.D.tot;rows.push([{t:'Totale',b:1},{t:String(T.n),b:1},{t:String(T.p),b:1},{t:String(T.d),b:1},{t:String(T.e),b:1},{t:Math.round(T.p/T.n*100)+'%',b:1}]);
+      var cols=rec?[{t:'Zona',w:48,al:'l'},{t:U,w:42,al:'c'},{t:'Buone',w:32,al:'c',hc:OC['+']},{t:'Neutre',w:34,al:'c',hc:YELP},{t:'Brutte',w:32,al:'c',hc:ORC},{t:'Ace',w:26,al:'c',hc:OC['-']},{t:'% buone',w:32,al:'c'}]:
+        [{t:'Zona',w:58,al:'l'},{t:U,w:44,al:'c'},{t:serve?'Ace':'Punto',w:34,al:'c',hc:OC['+']},{t:'Normali',w:44,al:'c',hc:YELP},{t:'Errori',w:34,al:'c',hc:OC['-']},{t:serve?'% ace':'% punto',w:32,al:'c'}];
+      function zr(lbl,r,bold){var v=[{t:lbl,b:bold},{t:String(r.n),b:1},{t:String(r.p),c:r.p?INKC:LINEC,b:bold?1:0},{t:String(r.d),c:r.d?INKC:LINEC,b:bold?1:0}];
+        if(rec)v.push({t:String(r.b),c:r.b?INKC:LINEC,b:bold?1:0});v.push({t:String(r.e),c:r.e?INKC:LINEC,b:bold?1:0});v.push({t:Math.round(r.p/r.n*100)+'%',b:1});return v}
+      var rows=b.D.rows.map(function(r,ri){return zr(zlbl(fk,b.c[1],r.z),r,ri===0)});
+      var T=b.D.tot;rows.push(zr('Totale',T,true));
       var s2={y:y0+12};table(P,s2,cols,rows,{x:x0});ymax=Math.max(ymax,s2.y);
     });
     st.y=ymax+2;
@@ -1079,7 +1094,7 @@ function buildPdf(){
   var tot=P.pages.length;
   P.pages.forEach(function(pg,i){P.cur=pg;
     P.line(PM,PH-PM-10,PW-PM,PH-PM-10,.5,LINEC);
-    P.text(PM,PH-PM+1,'+ bene / punto    \u2022 neutro / in gioco    \u2212 errore    \u00b7    Eff. = (+ \u2212 \u2212) \u00f7 azioni, minimo 0% (battuta, attacco)    \u00b7    Pos. = + \u00f7 azioni (ricezione, difesa, alzata, appoggio, muro)',6.5,false,MUTEC);
+    P.text(PM,PH-PM+1,'+ bene / punto    \u2022 neutro / in gioco    \u2212 errore (in ricezione: brutta = tenuta in campo, ace = ace subito)    \u00b7    Eff. = (+ \u2212 \u2212) \u00f7 azioni, minimo 0% (battuta, attacco)    \u00b7    Pos. = + \u00f7 azioni (ricezione, difesa, alzata, appoggio, muro)',6.5,false,MUTEC);
     P.text(PW-PM,PH-PM+1,(i+1)+' / '+tot,7,true,MUTEC,'r')});
   return new Blob([P.build()],{type:'application/pdf'});
 }
@@ -1122,7 +1137,7 @@ document.addEventListener('click',function(ev){
   if(a==='zskip'){var ze=ui.zp&&ui.zp.e;if(ze&&ze.z&&!ze.z.a&&!ze.z.b)delete ze.z;ui.zp=null;persist();render();return}
   if(a==='zone'){var ze2=ui.zp&&ui.zp.e;if(!ze2)return;var zs=b.getAttribute('data-s'),zn=+b.getAttribute('data-z');ze2.z=ze2.z||{a:null,b:null};
     if(zs==='us')ze2.z.a=ze2.z.a===zn?null:zn;else ze2.z.b=ze2.z.b===zn?null:zn;
-    if((ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:COL[ze2.o]};ui.zp=null}
+    if((ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:ocol(ze2)};ui.zp=null}
     persist();render();return}
   if(a==='player'){ui.zp=null;var pn=+b.getAttribute('data-n');ui.player=(ui.player===pn&&!ui.fund)?null:pn;render();return}
   if(a==='role'){state.roles[+b.getAttribute('data-n')]=b.getAttribute('data-r');persist();render();return}
@@ -1141,7 +1156,7 @@ document.addEventListener('click',function(ev){
   if(a==='del'){var dn=+b.getAttribute('data-n');state.extra=state.extra.filter(function(x){return x.n!==dn});delete state.absent[dn];delete state.roles[dn];persist();render();return}
   if(a==='auto'){state.auto=!state.auto;persist();render();return}
   if(a==='fund'){ui.zp=null;var k=b.getAttribute('data-k');ui.fund=ui.fund===k?null:k;render();return}
-  if(a==='out'){addEvent(b.getAttribute('data-o'));return}
+  if(a==='out'){addEvent(b.getAttribute('data-o'),b.getAttribute('data-ace')==='1');return}
   if(a==='fset'){var v=b.getAttribute('data-v');ui.fSet=v==='all'?'all':+v;ui.zo=null;render();return}
   if(a==='ffund'){ui.fFund=b.getAttribute('data-k');ui.zo=null;render();return}
 });
