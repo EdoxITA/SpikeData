@@ -20,7 +20,7 @@
 @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/barlow-condensed-latin-500-normal.woff2) format('woff2')}
 @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-condensed-latin-600-normal.woff2) format('woff2')}
 @font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;font-display:swap;src:url(fonts/barlow-condensed-latin-700-normal.woff2) format('woff2')}
-/* Layout: tablet in orizzontale a tre colonne (giocatrici | fondamentali | esiti e ultime azioni) senza scorrere; in verticale le stesse sezioni una sotto l'altra. Punteggio e annulla sempre in alto. */
+/* Layout: tablet in orizzontale a tre colonne (atleti | fondamentali | esiti e ultime azioni) senza scorrere; in verticale le stesse sezioni una sotto l'altra. Punteggio e annulla sempre in alto. */
 :root{
   --bg:#eceff2; --surface:#ffffff; --ink:#12202c; --mute:#5d6b78; --line:#d3d9df;
   --accent:#1f4fd1; --accent-ink:#ffffff; --accent-soft:#dfe7fb;
@@ -297,7 +297,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
   </header>
 
   <section id="paneScout" class="scout">
-    <div class="col"><h2>Giocatrice</h2><div class="players" id="players"></div></div>
+    <div class="col"><h2>Atleta</h2><div class="players" id="players"></div></div>
     <div class="col"><h2>Fondamentale</h2><div class="fund" id="fund"></div></div>
     <div class="col">
       <h2>Esito</h2><div class="outs" id="outs"></div>
@@ -343,11 +343,11 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
       <div><b>Modalità avanzata</b><div class="note">Dopo ogni battuta e attacco puoi toccare le zone: da dove parte e dove arriva la palla (facoltativo a ogni azione). Mappa e zone compaiono in Statistiche e nel PDF. In più compare il fondamentale Muro: punto, normale (palla recuperata) o sbagliato.</div></div>
       <button id="advBtn" data-act="adv" aria-pressed="false">Spenta</button>
     </div>
-    <div class="card"><h2>Giocatrici e ruoli</h2>
-      <div class="note" style="margin-bottom:6px">Con “Presente” spento la giocatrice sparisce dallo scout. Le bande cambiano tra S1 e S2, i liberi tra L1 e L2. Palleggio, centrali e opposti restano fissi.</div>
+    <div class="card"><h2>Rosa e ruoli</h2>
+      <div class="note" style="margin-bottom:6px">Con “Presente” spento l’atleta sparisce dallo scout. Le bande cambiano tra S1 e S2, i liberi tra L1 e L2. Palleggio, centrali e opposti restano fissi.</div>
       <div id="roles"></div>
     </div>
-    <div class="card"><h2>Aggiungi giocatrice</h2>
+    <div class="card"><h2>Aggiungi atleta</h2>
       <div class="addf">
         <input id="addN" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="N°" aria-label="Numero di maglia">
         <input id="addF" placeholder="Nome (facoltativo)" aria-label="Nome" autocapitalize="words">
@@ -362,7 +362,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
   <div class="save" id="saveState"></div>
 </div>
 
-<script>window.addEventListener('error',function(e){try{var d=document.createElement('pre');d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;margin:0;background:#fff3f3;color:#900;padding:10px;font:12px monospace;white-space:pre-wrap;max-height:40vh;overflow:auto';d.textContent='Errore: '+(e.message||e.type)+' riga '+(e.lineno||'?');(document.body||document.documentElement).appendChild(d)}catch(x){}});</script>
+<script>window.addEventListener('error',function(e){try{if(e.message==='Script error.'&&!e.lineno&&!e.filename)return;var d=document.createElement('pre');d.onclick=function(){d.remove()};d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;margin:0;background:#fff3f3;color:#900;padding:10px;font:12px monospace;white-space:pre-wrap;max-height:40vh;overflow:auto';d.textContent='Errore: '+(e.message||e.type)+' riga '+(e.lineno||'?');(document.body||document.documentElement).appendChild(d)}catch(x){}});</script>
 <script>
 (function(){
 var BASE=[];
@@ -561,7 +561,7 @@ function renderScout(){
     h+='<button class="pl" data-act="player" data-n="'+p.n+'" aria-pressed="'+(ui.player===p.n)+'" aria-label="'+p.n+' '+p.s+'">'+
       '<span class="tag">'+tagOf(p.n)+'</span><span class="n">'+p.n+'</span><span class="s">'+p.s+(p.cap?' ©':'')+'</span></button>';
   });
-  if(!h)h='<div class="card emptyplayers"><h2>Nessuna giocatrice</h2><div class="note">Importa la distinta da un file PDF, Excel o CSV, oppure aggiungi le giocatrici a mano.</div><button class="btn solid" data-act="gotoset">Vai a Impostazioni</button></div>';
+  if(!h)h='<div class="card emptyplayers"><h2>Nessun atleta</h2><div class="note">Importa la distinta da un file PDF, Excel o CSV, oppure aggiungi i nomi a mano.</div><button class="btn solid" data-act="gotoset">Vai a Impostazioni</button></div>';
   $('players').innerHTML=h;
   h='';funds().forEach(function(f){var ok=ui.player==null||allowed(ui.player,f.k);
     h+='<button data-act="fund" data-k="'+f.k+'" aria-pressed="'+(ui.fund===f.k)+'"'+(ok?'':' disabled')+'>'+f.n+'</button>'});
@@ -576,7 +576,7 @@ function renderScout(){
   $('outs').innerHTML=h;
   var p=ui.player!=null?pl(ui.player):null;
   $('hint').innerHTML=ready?('<b>'+p.s+' '+p.n+'</b> · '+F.n+': scegli l’esito'):
-    (p?('<b>'+p.s+' '+p.n+'</b> selezionata: scegli il fondamentale'):'Tocca una giocatrice per iniziare');
+    (p?('<b>'+p.s+' '+p.n+'</b> selezionata: scegli il fondamentale'):'Tocca un’atleta per iniziare');
   renderZone();renderFirst();
   var fl=$('flash');fl.textContent=ui.flash?ui.flash.t:'';fl.style.color=ui.flash?ui.flash.c:'';
   var ev=state.events.slice(-5).reverse();
@@ -604,7 +604,7 @@ function renderStats(){
   $('fFund').innerHTML=h;
   var F=fd(ui.fFund),list=filtered(),tot={'+':0,'.':0,'-':0,bad:0,ace:0,tot:0};
   var cols=F.k==='R'?[['+','+',COL['+']],['.','•',COL['.']],['bad','Brutta','var(--o-minus)'],['ace','Ace','var(--o-err)']]:OUTS.map(function(o){return [o,OSYM[o],COL[o]]});
-  var t='<thead><tr><th>Giocatrice</th><th>Tot</th>';
+  var t='<thead><tr><th>Atleta</th><th>Tot</th>';
   cols.forEach(function(k){t+='<th style="color:'+k[2]+'">'+k[1]+'</th>'});
   t+='<th>'+(F.eff==='a'?'Eff.':'Pos.')+'</th></tr></thead><tbody>';
   roster().forEach(function(p){
@@ -738,7 +738,7 @@ function renderZoneMap(list){
   var serve=fk==='B',rec=fk==='R',base=list.filter(function(e){return e.f===fk&&zhas(e)}),h='<h2>Zone · '+fd(fk).n+'</h2>';
   var pls=roster().filter(function(p){return base.some(function(e){return e.p===p.n})});
   if(ui.fPl!=null&&!pls.some(function(p){return p.n===ui.fPl}))ui.fPl=null;
-  h+='<div class="chips" role="group" aria-label="Giocatrice"><button data-act="fpl" data-n="" aria-pressed="'+(ui.fPl==null)+'">Squadra</button>';
+  h+='<div class="chips" role="group" aria-label="Atleta"><button data-act="fpl" data-n="" aria-pressed="'+(ui.fPl==null)+'">Squadra</button>';
   pls.forEach(function(p){h+='<button data-act="fpl" data-n="'+p.n+'" aria-pressed="'+(ui.fPl===p.n)+'">'+p.n+' '+p.s+'</button>'});
   h+='</div>';
   var use=ui.fPl==null?base:base.filter(function(e){return e.p===ui.fPl}),all=list.filter(function(e){return e.f===fk&&(ui.fPl==null||e.p===ui.fPl)});
@@ -791,7 +791,7 @@ function renderZoneDet(list){
     h+='</tbody></table></div>';
   });
   if(!any)h+='<div class="note">Nessuna zona registrata per questa selezione.</div>';
-  else h+='<div class="note" style="margin-top:6px">Zone ordinate dalla più '+(rec?'colpita':'usata')+'. La barra mostra come sono finite le azioni in quella zona.'+(rec?'':' Zone di arrivo numerate dalla loro parte.')+' La giocatrice si sceglie nei pulsanti sopra la mappa.</div>';
+  else h+='<div class="note" style="margin-top:6px">Zone ordinate dalla più '+(rec?'colpita':'usata')+'. La barra mostra come sono finite le azioni in quella zona.'+(rec?'':' Zone di arrivo numerate dalla loro parte.')+' L’atleta si sceglie nei pulsanti sopra la mappa.</div>';
   el.innerHTML=h;el.hidden=false;
 }
 function cap1(t){return t.replace(/(^|[\s'-])(\S)/g,function(m,a,c){return a+c.toUpperCase()})}
@@ -1334,7 +1334,7 @@ function importFile(file){
   }).then(function(rows){
     imp={raw:rows,pdf:isPdf,order:null};runExtract();
   },function(){
-    m.textContent='Non riesco a leggere questo file. Prova con Excel o CSV, oppure aggiungi le giocatrici a mano.';
+    m.textContent='Non riesco a leggere questo file. Prova con Excel o CSV, oppure aggiungi i nomi a mano.';
   });
 }
 function runExtract(){var r=extract(imp.raw,imp.order);imp.rows=r.rows;imp.heur=r.heur;imp.order=r.order;renderImp()}
@@ -1342,7 +1342,7 @@ function renderImp(){
   var m=$('impMsg'),pv=$('impPrev');
   if(!imp||!imp.rows.length){
     pv.innerHTML='';
-    m.textContent=(imp&&!imp.raw.length)?'Non trovo testo nel file (se è una foto o una scansione non posso leggerla). Prova con Excel o CSV, oppure aggiungi le giocatrici a mano.':'Non ho riconosciuto giocatrici: servono numero di maglia e cognome su ogni riga. Controlla il file o aggiungile a mano.';
+    m.textContent=(imp&&!imp.raw.length)?'Non trovo testo nel file (se è una foto o una scansione non posso leggerla). Prova con Excel o CSV, oppure aggiungi i nomi a mano.':'Non ho riconosciuto atleti: servono numero di maglia e cognome su ogni riga. Controlla il file o aggiungile a mano.';
     return;
   }
   var h='';
@@ -1354,13 +1354,13 @@ function renderImp(){
       '<input data-i="'+i+'" data-k="f" value="'+escA(r.f)+'" placeholder="Nome" aria-label="Nome" autocapitalize="words">'+
       '<input data-i="'+i+'" data-k="s" value="'+escA(r.s)+'" placeholder="Cognome" aria-label="Cognome" autocapitalize="words">'+
       '<select data-i="'+i+'" data-k="r" aria-label="Ruolo">'+ROPT.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===r.r?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select>'+
-      (dup?'<div class="note dupn">N° già in lista: verrà aggiornata</div>':'')+'</div>';
+      (dup?'<div class="note dupn">N° già in lista: verrà aggiornato</div>':'')+'</div>';
   });
   h+='<div class="actions" style="margin-top:12px"><button class="btn solid" data-act="impgo" id="impGo"></button><button class="btn" data-act="impcancel">Annulla</button></div>';
   pv.innerHTML=h;impCount();
   m.textContent='Controlla l’anteprima: puoi correggere ogni campo prima di confermare.'+(imp.rows.some(function(r){return r.noRole})?' Le righe con il bordo arancione non hanno il ruolo: scegli tu.':'');
 }
-function impCount(){var n=imp?imp.rows.filter(function(r){return r.inc}).length:0,b=$('impGo');if(b){b.textContent='Aggiungi '+n+(n===1?' giocatrice':' giocatrici');b.disabled=!n}}
+function impCount(){var n=imp?imp.rows.filter(function(r){return r.inc}).length:0,b=$('impGo');if(b){b.textContent='Aggiungi '+n+(n===1?' nome':' nomi');b.disabled=!n}}
 function impEdit(t){
   if(!imp||!t.getAttribute||t.getAttribute('data-i')==null)return;
   var r=imp.rows[+t.getAttribute('data-i')],k=t.getAttribute('data-k');if(!r)return;
@@ -1392,7 +1392,7 @@ function impApply(){
     else{state.extra.push({n:r.n,s:r.s,f:r.f,r:r.r,extra:1});add++}
   });
   imp=null;$('impPrev').innerHTML='';
-  m.textContent='Fatto: '+add+(add===1?' giocatrice aggiunta':' giocatrici aggiunte')+(upd?', '+upd+' aggiornate':'')+'.';
+  m.textContent='Fatto: '+add+(add===1?' nome aggiunto':' nomi aggiunti')+(upd?', '+upd+' aggiornati':'')+'.';
   persist();render();
 }
 
