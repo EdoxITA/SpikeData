@@ -97,8 +97,10 @@ h2{font-family:var(--f-disp);font-weight:600;font-size:15px;letter-spacing:.1em;
 .fund button:disabled{opacity:.28}
 .fund button.flt{border-style:dashed;font-size:15px;color:var(--o-err);height:46px}
 .fund button.flt:first-of-type{grid-column-start:1}
-.fund .fch{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.fund .fch.two{grid-template-columns:repeat(2,1fr)}
+.fund .fch{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fund .fch.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fund button{min-width:0}
+.fund .fch button{white-space:normal;line-height:1.15;overflow-wrap:anywhere}
 .fund button.opp{color:var(--o-hash);border-color:var(--o-hash)}
 .fund button.opp[data-act=opps]{grid-column:1 / -1}
 .fund button.flt.opp[aria-pressed="true"]{background:var(--o-hash);color:#fff;border-color:var(--o-hash)}
@@ -170,6 +172,8 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
   .pl{min-height:92px}
   .fund{grid-template-columns:1fr}
   .fund button{height:64px;text-align:left;padding-left:18px}
+  .fund .fch,.fund .fch.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fund .fch button{height:52px;text-align:center;padding:0 6px;font-size:15px}
   .outs{grid-template-columns:1fr}
   .out{height:68px;flex-direction:row;justify-content:flex-start;gap:14px;padding-left:18px}
   .out .sym{width:36px;text-align:center}
@@ -322,7 +326,11 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .pl.norcv{opacity:.4}
 .pl.out2{border:2px solid var(--o-err)}
 .rbar .fm{font-weight:700;color:var(--accent)}
-.btn.tout{width:100%;margin-top:10px;height:46px;border-color:var(--accent);color:var(--accent)}
+.btn.tout{flex:1;margin-top:10px;height:46px;border-color:var(--accent);color:var(--accent);padding:0 10px}
+.tobar{display:flex;gap:8px}.tobar .btn[hidden]{display:none}
+.btn.tout.sv{border-color:var(--o-hash);color:var(--o-hash)}
+.svf{display:flex;flex-direction:column;gap:6px}.svf label{font-weight:600;font-size:14px;margin-top:6px}
+.svf input{height:50px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:17px}
 .to .tsc{display:flex;align-items:baseline;gap:10px;font-family:var(--f-disp);font-weight:700;font-size:34px}
 .to .tsc small{font-family:var(--f-body);font-size:14px;font-weight:600;color:var(--mute)}
 .to .l10{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
@@ -456,7 +464,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
       <div class="flash" id="flash" role="status"></div>
       <div class="hint" id="hint"></div>
       <div class="zp" id="zonePanel" hidden></div>
-      <button class="btn tout" id="toBtn" data-act="tout" hidden>⏱ Time-out · situazione</button>
+      <div class="tobar"><button class="btn tout" id="toBtn" data-act="tout" hidden>⏱ Time-out</button><button class="btn tout sv" id="svBtn" data-act="svopen" hidden>💾 Salva partita</button></div>
       <div class="fbar" id="firstBar" hidden></div>
       <div class="log" id="log"></div>
     </div>
@@ -525,7 +533,8 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
         <div class="mf"><input id="mOpp" placeholder="Avversario" aria-label="Avversario" autocapitalize="words"><input id="mDate" type="date" aria-label="Data"></div>
         <div class="chips" id="mHome" role="group" aria-label="Casa o trasferta" style="margin-bottom:10px"></div>
       </div>
-      <button class="btn danger" id="reset">Nuova partita</button><div class="note" id="msg2" role="status" style="margin-top:8px"></div></div>
+      <div class="note" id="svInfo" style="margin-bottom:8px"></div>
+      <div class="actions"><button class="btn solid" data-act="svopen">💾 Salva partita</button><button class="btn danger" id="reset">Nuova partita</button></div><div class="note" id="msg2" role="status" style="margin-top:8px"></div></div>
   </section>
 
   <section id="paneSet" class="wrap" hidden>
@@ -624,7 +633,7 @@ function persist(){
 function flush(){
   if(writing||!dirty)return;
   writing=true;dirty=false;setSaveState('Salvataggio…');
-  var body={events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()};
+  var body={savedAt:state.savedAt||0,events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()};
   docRef.set(body).then(function(){writing=false;setSaveState('Salvato');if(dirty)flush()},
     function(){writing=false;setSaveState('Salvato su questo dispositivo (cloud non disponibile)')});
 }
@@ -659,12 +668,12 @@ function cleanRoster(){
   state.extra=ex;
   var ed={};Object.keys(state.edits||{}).forEach(function(k){var v=state.edits[k],id=cleanN(k);if(id==null||!v)return;var n=cleanN(v.n);ed[id]={n:n==null?id:n,s:cleanS(v.s,40),f:cleanS(v.f,40)}});state.edits=ed;
   var ro={};Object.keys(state.roles||{}).forEach(function(k){var n=cleanN(k);if(n!=null&&ROLEK[state.roles[k]])ro[n]=state.roles[k]});state.roles=ro;
-  var m=state.meta||{};state.meta={opp:cleanS(m.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(m.date||'')?m.date:'',home:m.home==='H'||m.home==='T'?m.home:''};
+  var m=state.meta||{};state.meta={name:cleanS(m.name,60),opp:cleanS(m.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(m.date||'')?m.date:'',home:m.home==='H'||m.home==='T'?m.home:''};
 }
 function cleanMatch(m){if(!m||typeof m!=='object')return null;m=deepClean(m);if(!m||typeof m.id!=='string')return null;
   m.events=Array.isArray(m.events)?migrate(m.events):[];
   var nm={};Object.keys(m.names||{}).forEach(function(k){var n=cleanN(k),q=m.names[k];if(n==null||!q)return;nm[n]={s:cleanS(q.s,40),f:cleanS(q.f,40),r:cleanRole(q.r),cap:q.cap?1:0}});m.names=nm;
-  var mt=m.meta||{};m.meta={opp:cleanS(mt.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(mt.date||'')?mt.date:'',home:mt.home==='H'||mt.home==='T'?mt.home:''};
+  var mt=m.meta||{};m.meta={name:cleanS(mt.name,60),opp:cleanS(mt.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(mt.date||'')?mt.date:'',home:mt.home==='H'||mt.home==='T'?mt.home:''};
   return m}
 var OLDO={'#':'+','+':'+','!':'.','-':'-','=':'-'};
 function migrate(list){var r=[];(Array.isArray(list)?list:[]).forEach(function(e){if(!e||typeof e!=='object')return;if(two(e.f)&&e.o==='-'&&e.pt==='them'&&!e.ace)e.ace=1;if(!OUTS_OK[e.o])e.o=OLDO[e.o]||'.';e=cleanEv(e);if(e)r.push(e)});return r}
@@ -677,7 +686,7 @@ function adopt(d){
   state.auto=d.auto!==false;state.adv=d.adv===true;state.extra=Array.isArray(d.extra)?d.extra:[];state.edits=d.edits||{};state.absent=d.absent||{};
   state.rally=Array.isArray(d.rally)?d.rally:[];state.first=d.first||{};
   state.lineup=d.lineup||{};state.subs=Array.isArray(d.subs)?d.subs:[];state.rot=d.rot!==false;state.meta=d.meta||{opp:'',date:'',home:''};state.mid=d.mid||null;
-  state.updated=typeof d.updated==='number'?d.updated:0;state.set=int(state.set,1,5)||1;state.mid=typeof state.mid==='string'?state.mid.slice(0,64):null;
+  state.savedAt=typeof d.savedAt==='number'?d.savedAt:0;state.updated=typeof d.updated==='number'?d.updated:0;state.set=int(state.set,1,5)||1;state.mid=typeof state.mid==='string'?state.mid.slice(0,64):null;
   cleanRoster();
 }
 function applyRemote(d){
@@ -916,7 +925,7 @@ function renderScout(){
   $('hint').innerHTML=ready?('<b>'+p.s+' '+p.n+'</b> · '+F.n+': scegli l’esito'):
     (p?('<b>'+p.s+' '+p.n+'</b> selezionata: scegli il fondamentale'):(PHS==='rec'?'<b>Ricezione</b>: tocca chi riceve (in evidenza)':'Tocca un’atleta per iniziare'));
   renderZone();renderFirst();
-  $('toBtn').hidden=!(state.events.length||ralOf(state.set).length);
+  $('toBtn').hidden=!(state.events.length||ralOf(state.set).length);$('svBtn').hidden=!isUnsaved();
   var fl=$('flash');fl.textContent=ui.flash?ui.flash.t:'';fl.style.color=ui.flash?ui.flash.c:'';
   var ev=state.events.slice(-5).reverse();
   if(!ev.length){$('log').innerHTML='<div class="empty">Nessuna azione registrata.</div>'}
@@ -1144,6 +1153,7 @@ function renderZoneDet(list){
 function cap1(t){return t.replace(/(^|[\s'-])(\S)/g,function(m,a,c){return a+c.toUpperCase()})}
 function used(n){return state.events.some(function(e){return e.p===n})}
 function renderSettings(){
+  var si=$('svInfo');if(si)si.innerHTML=!hasData()?'Nessuna partita in corso.':(state.savedAt?'<b>'+mLabel(state.meta).replace(/</g,'&lt;')+'</b> · salvata'+(isUnsaved()?' (ci sono modifiche da salvare)':''):'Partita in corso <b>non ancora salvata</b>.');
   var h='';
   roster().forEach(function(p){var r=roleOf(p.n),here=isHere(p.n);
     if(ui.edit===p.n){h+='<div class="rrow editing"><div class="edf"><input id="eN" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="'+p.n+'" aria-label="Numero di maglia"><input id="eF" value="'+(p.f||'').replace(/"/g,'&quot;')+'" placeholder="Nome" aria-label="Nome" autocapitalize="words"><input id="eS" value="'+p.s.replace(/"/g,'&quot;')+'" placeholder="Cognome" aria-label="Cognome" autocapitalize="words"><button class="btn solid" data-act="editsave" data-n="'+p.n+'">Salva</button><button class="btn" data-act="editcancel">Annulla</button>'+'<button class="btn danger" data-act="editdel" data-n="'+p.n+'">'+(ui.delArm===p.n?'Tocca ancora per eliminare':'Elimina')+'</button></div></div>';return}
@@ -1164,8 +1174,8 @@ function renderSettings(){
 }
 function render(){
   cleanRoster();fixSel();renderHeader();
-  if(ui.tab==='season'&&!state.adv)ui.tab='scout';
-  $('tabSeason').hidden=!state.adv;$('tabSeason').parentNode.className='tabs'+(state.adv?' five':' four');
+  var showS=state.adv||arch.length>0;if(ui.tab==='season'&&!showS)ui.tab='scout';
+  $('tabSeason').hidden=!showS;$('tabSeason').parentNode.className='tabs'+(showS?' five':' four');
   var map={scout:['paneScout','tabScout'],stats:['paneStats','tabStats'],season:['paneSeason','tabSeason'],team:['paneTeam','tabTeam'],set:['paneSet','tabSet']};
   Object.keys(map).forEach(function(t){$(map[t][0]).hidden=ui.tab!==t;$(map[t][1]).setAttribute('aria-selected',ui.tab===t)});
   if(ui.tab==='scout')renderScout();else if(ui.tab==='stats')renderStats();else if(ui.tab==='season')renderSeason();else renderSettings();
@@ -1479,14 +1489,37 @@ function snapNames(){var o={};roster().forEach(function(p){o[p.n]={s:p.s,f:p.f||
 function snapMatch(){
   if(!state.mid)state.mid=newId();
   var mt=JSON.parse(JSON.stringify(state.meta||{}));if(!mt.date)mt.date=todayISO();
-  return {id:state.mid,meta:mt,events:state.events,set:state.set,score:state.score,rally:state.rally,first:state.first,absent:state.absent,lineup:state.lineup||{},subs:state.subs||[],names:snapNames(),roles:state.roles,saved:Date.now()};
+  return JSON.parse(JSON.stringify({id:state.mid,meta:mt,events:state.events,set:state.set,score:state.score,rally:state.rally,first:state.first,absent:state.absent,lineup:state.lineup||{},subs:state.subs||[],names:snapNames(),roles:state.roles,saved:Date.now()}));
 }
 function asState(m){return {events:m.events||[],set:m.set||1,score:m.score||{},roles:m.roles||{},auto:true,adv:true,
   extra:Object.keys(m.names||{}).map(function(k){var q=m.names[k];return {n:+k,s:q.s,f:q.f||'',r:q.r,cap:q.cap}}),
   edits:{},absent:m.absent||{},rally:m.rally||[],first:m.first||{},lineup:m.lineup||{},subs:m.subs||[],rot:true,meta:m.meta||{},mid:m.id,updated:0}}
 function withState(st,fn){var sv=state;state=st;try{return fn()}finally{state=sv}}
+function isUnsaved(){return hasData()&&(!state.savedAt||state.updated>state.savedAt)}
+function mLabel(mt){mt=mt||{};return mt.name||(mt.opp?'vs '+mt.opp:'Partita senza nome')}
+function saveMatch(nm,dt){
+  state.meta=state.meta||{};state.meta.name=cleanS(nm,60);if(/^\d{4}-\d{2}-\d{2}$/.test(dt||''))state.meta.date=dt;
+  var sn=snapMatch();arch=arch.filter(function(m){return m.id!==sn.id});arch.push(sn);var ok=arSave();
+  persist();state.savedAt=state.updated;lsSave();if(HOOK.persist)HOOK.persist();
+  return ok;
+}
+function newMatchState(){state={events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{name:'',opp:'',date:'',home:''},mid:null,updated:0,savedAt:0};
+  ui.player=null;ui.fund=null;ui.flash='';ui.lu=null;ui.sub=null;ui.luAsked={};ui.zp=null}
+function svHtml(){
+  var S=ui.sv,mt=state.meta||{},nw=S.mode==='new';
+  var def=mt.name||(mt.opp?'vs '+mt.opp:''),dt=mt.date||todayISO();
+  var h='<div class="sin"><div class="srow"><h1>'+(nw?'Salvare la partita?':'Salva partita')+'</h1><button class="btn" data-act="svclose">Annulla</button></div>';
+  if(nw)h+='<div class="note">Prima di iniziarne una nuova: la partita attuale '+(state.savedAt?'ha modifiche non salvate.':'non è ancora salvata.')+' Dalle un nome e una data per ritrovarla in <b>Stagione</b>.</div>';
+  else h+='<div class="note">La partita finisce in <b>Stagione</b> con questo nome. Puoi continuare lo scout e salvare di nuovo quando vuoi.</div>';
+  h+='<div class="card svf"><label for="svName">Nome della partita</label><input id="svName" maxlength="60" placeholder="es. vs Cislago · 3ª giornata" value="'+cleanS(S.name!=null?S.name:def,60)+'" autocapitalize="sentences">';
+  h+='<label for="svDate">Data</label><input id="svDate" type="date" value="'+(S.date||dt)+'"></div>';
+  if(S.msg)h+='<div class="note" style="color:var(--o-err);font-weight:600">'+S.msg+'</div>';
+  h+='<button class="btn solid" data-act="svdo" style="height:54px;font-size:18px">'+(nw?'Salva e inizia una nuova partita':'💾 Salva')+'</button>';
+  if(nw)h+='<button class="btn danger" data-act="svdiscard">'+(S.arm?'Tocca ancora: perdi le modifiche':'Non salvare, inizia una nuova partita')+'</button>';
+  return h+'</div>';
+}
 function allMatches(){
-  var L=arch.map(function(m){return {m:m,st:asState(m),cur:false}});
+  var L=arch.filter(function(m){return m.id!==state.mid||!hasData()}).map(function(m){return {m:m,st:asState(m),cur:false}});
   if(hasData())L.push({m:null,st:state,cur:true});
   L.sort(function(a,b){var da=(a.st.meta&&a.st.meta.date)||'',db=(b.st.meta&&b.st.meta.date)||'';if(a.cur&&!da)da='9999';if(b.cur&&!db)db='9999';return da<db?1:da>db?-1:0});
   return L;
@@ -1523,7 +1556,7 @@ function renderSeason(){
     if(m.done){if(m.sw.us>m.sw.them)W++;else Lo++}
     sw+=m.sw.us;sl+=m.sw.them;['so','bp'].forEach(function(k){var t=k==='so'?so:bp;t.n+=m[k].n;t.w+=m[k].w});
     var mt=it.st.meta||{},rc=m.done?(m.sw.us>m.sw.them?'w':'l'):'p';
-    rows+='<div class="mrow"><span class="res '+rc+'">'+m.sw.us+'–'+m.sw.them+'</span><span class="mm"><b>'+(mt.opp?'vs '+mt.opp.replace(/</g,'&lt;'):'Partita senza nome')+(mt.home==='H'?' · casa':mt.home==='T'?' · trasferta':'')+(it.cur?' · in corso':'')+'</b><small>'+(mt.date?fmtDate(mt.date)+' · ':'')+(m.sets.join('  ')||'nessun punto')+' · SO '+rcell(m.so,false).replace(/ \(.*\)/,'')+' · BP '+rcell(m.bp,false).replace(/ \(.*\)/,'')+'</small></span>'+
+    rows+='<div class="mrow"><span class="res '+rc+'">'+m.sw.us+'–'+m.sw.them+'</span><span class="mm"><b>'+mLabel(mt).replace(/</g,'&lt;')+(mt.home==='H'?' · casa':mt.home==='T'?' · trasferta':'')+(it.cur?' · in corso':'')+'</b><small>'+(mt.date?fmtDate(mt.date)+' · ':'')+(m.sets.join('  ')||'nessun punto')+' · SO '+rcell(m.so,false).replace(/ \(.*\)/,'')+' · BP '+rcell(m.bp,false).replace(/ \(.*\)/,'')+'</small></span>'+
       '<span class="mb">'+(it.cur?'':'<button data-act="aropen" data-id="'+it.m.id+'">Apri</button><button class="d" data-act="ardel" data-id="'+it.m.id+'">'+(ui.arDel===it.m.id?'Tocca ancora':'Elimina')+'</button>')+'</span></div>'});
   $('sTeam').innerHTML=L.length?'<h2>Squadra · stagione</h2><div class="zsum"><b>'+L.length+'</b> partite · vinte <b>'+W+'</b>, perse <b>'+Lo+'</b> · set <b>'+sw+'–'+sl+'</b><br>Side-out <b>'+rcell(so,false)+'</b> · Break point <b>'+rcell(bp,false)+'</b></div>':'<h2>Squadra · stagione</h2><div class="note">Nessuna partita ancora. Quando premi “Nuova partita” in Impostazioni, la partita viene salvata qui.</div>';
   $('sList').innerHTML=rows||'<div class="note">Nessuna partita.</div>';
@@ -1781,8 +1814,10 @@ function C0(){return (state.rot&&lu(state.set))?courtAt(state.set):null}
 function renderSheet(){
   var el=$('sheet');
   if(!ui.lu&&!ui.sub&&needLu()){ui.luAsked[state.set]=1;openLu(state.set)}
-  if(!ui.lu&&!ui.sub&&!ui.to){if(!el.hidden){el.hidden=true;el.innerHTML=''}return}
-  var top=el.scrollTop;el.innerHTML=ui.lu?luHtml():ui.sub?subHtml():toHtml();el.hidden=false;el.scrollTop=top;
+  if(!ui.lu&&!ui.sub&&!ui.to&&!ui.sv){if(!el.hidden){el.hidden=true;el.innerHTML=''}return}
+  var top=el.scrollTop,fo=document.activeElement&&document.activeElement.id,fv=fo&&$(fo)?$(fo).value:null;
+  el.innerHTML=ui.sv?svHtml():ui.lu?luHtml():ui.sub?subHtml():toHtml();el.hidden=false;el.scrollTop=top;
+  if(fo&&$(fo)&&el.contains($(fo))){$(fo).value=fv;$(fo).focus()}
 }
 var HS=false;
 function hsNow(){
@@ -2079,12 +2114,13 @@ document.addEventListener('click',function(ev){
     savePdf(blob,fn);
     return}
   if(b.id==='reset'){
-    var keep=state.adv&&hasData();
-    if(!resetArmed){resetArmed=true;b.textContent=keep?'Tocca ancora: salvo in archivio e comincio una nuova partita':'Tocca ancora per cancellare tutto';
+    if(isUnsaved()){ui.sv={mode:'new'};render();setTimeout(function(){var x=$('svName');if(x)x.focus()},50);return}
+    if(!resetArmed){resetArmed=true;b.textContent=hasData()?'Tocca ancora: inizia una nuova partita':'Tocca ancora per azzerare';
       setTimeout(function(){resetArmed=false;b.textContent='Nuova partita'},4000);return}
     resetArmed=false;b.textContent='Nuova partita';
-    var saved=true;if(keep){arch.push(snapMatch());saved=arSave()}
-    state={events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{opp:'',date:'',home:''},mid:null,updated:0};ui.player=null;ui.fund=null;ui.flash='';ui.lu=null;ui.sub=null;ui.luAsked={};persist();render();$('msg2').textContent=keep?(saved?'Partita salvata in archivio (scheda Stagione). Nuova partita pronta.':'Attenzione: la memoria del dispositivo è piena e l’archivio non è stato salvato. Esporta subito un backup dalla scheda Stagione.'):'Partita azzerata.';return}
+    var had=hasData(),lab=mLabel(state.meta);
+    if(had){var sn=snapMatch();arch=arch.filter(function(m){return m.id!==sn.id});arch.push(sn);arSave()}
+    newMatchState();persist();render();$('msg2').textContent=had?'«'+lab+'» è in Stagione. Nuova partita pronta.':'Nuova partita pronta.';return}
   if(a==='pt'){bump(b.getAttribute('data-side'),+b.getAttribute('data-d'));return}
   if(a==='nextset'){state.set=Math.min(5,state.set+1);persist();render();return}
   if(a==='set'){state.set=+b.getAttribute('data-set');persist();render();return}
@@ -2137,7 +2173,9 @@ document.addEventListener('click',function(ev){
   if(a==='sfund'){ui.sFund=b.getAttribute('data-k');render();return}
   if(a==='spl'){var sn=+b.getAttribute('data-n');ui.sPl=ui.sPl===sn?null:sn;render();return}
   if(a==='aropen'){var oid=b.getAttribute('data-id'),oi=-1;arch.forEach(function(m,i){if(m.id===oid)oi=i});if(oi<0)return;
-    var om=arch[oi];if(hasData())arch.push(snapMatch());arch.splice(oi,1);arSave();adoptMatch(om);persist();ui.tab='stats';render();return}
+    var om=arch[oi];if(om.id===state.mid){ui.tab='stats';render();return}
+    if(hasData()){var sn4=snapMatch();arch=arch.filter(function(m){return m.id!==sn4.id});arch.push(sn4);arSave()}
+    adoptMatch(om);persist();state.savedAt=state.updated;lsSave();ui.tab='stats';render();return}
   if(a==='ardel'){var did=b.getAttribute('data-id');if(ui.arDel!==did){ui.arDel=did;setTimeout(function(){if(ui.arDel===did){ui.arDel=null;if(ui.tab==='season')render()}},4000);render();return}
     ui.arDel=null;arch=arch.filter(function(m){return m.id!==did});arSave();render();return}
   if(a==='luopen'){ui.sub=null;openLu(state.set);render();return}
@@ -2161,6 +2199,15 @@ document.addEventListener('click',function(ev){
   if(a==='subdel'){delOp(state.set,+b.getAttribute('data-i'));persist();render();return}
   if(a==='subrot'){state.subs=state.subs||[];state.subs.push({set:state.set,k:'r',d:+b.getAttribute('data-d'),t:Date.now()});persist();render();return}
   if(a==='bench'){ui.bench=!ui.bench;render();return}
+  if(a==='svopen'){if(!hasData()){ui.flash={t:'Non c’è ancora niente da salvare: registra almeno un’azione o un punto.',c:'var(--mute)'};render();return}ui.sv={mode:'save'};ui.lu=null;ui.sub=null;ui.to=false;render();setTimeout(function(){var x=$('svName');if(x)x.focus()},50);return}
+  if(a==='svclose'){ui.sv=null;render();return}
+  if(a==='svdo'){var S2=ui.sv;if(!S2)return;var nm2=($('svName').value||'').trim(),dt2=$('svDate').value;
+    if(!nm2){S2.name='';S2.date=dt2;S2.msg='Scrivi un nome per la partita.';render();return}
+    var ok2=saveMatch(nm2,dt2),lab2=mLabel(state.meta);
+    if(S2.mode==='new'){newMatchState();persist();ui.sv=null;$('msg2').textContent=ok2?'«'+lab2+'» salvata in Stagione. Nuova partita pronta.':'Attenzione: memoria piena, partita non salvata. Esporta un backup.';ui.flash={t:'✓ «'+lab2+'» salvata. Nuova partita pronta.',c:COL['+']};render();return}
+    ui.sv=null;ui.flash={t:ok2?'✓ Partita salvata: «'+lab2+'»':'Memoria piena: partita non salvata. Esporta un backup.',c:ok2?COL['+']:COL['-']};render();return}
+  if(a==='svdiscard'){var S3=ui.sv;if(!S3)return;if(!S3.arm){S3.arm=true;S3.name=$('svName').value;S3.date=$('svDate').value;render();setTimeout(function(){if(ui.sv===S3){S3.arm=false;render()}},4000);return}
+    newMatchState();persist();ui.sv=null;render();$('msg2').textContent='Nuova partita pronta (la precedente non è stata salvata).';return}
   if(a==='tout'){ui.to=true;ui.lu=null;ui.sub=null;render();return}
   if(a==='toclose'){ui.to=false;render();return}
   if(a==='toall'){ui.toAll=b.getAttribute('data-v')==='1';render();return}
@@ -2461,8 +2508,8 @@ function clSave(){try{localStorage.setItem(LSC,JSON.stringify(CLS))}catch(e){}}
 function cloudOn(){return !!(SB_URL&&SB_KEY)}
 function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 var ROLEL={owner:'Proprietario',editor:'Fa lo scout',viewer:'Solo visione'};
-function stBody(){return {events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()}}
-function freshState(){return {events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{opp:'',date:'',home:''},mid:null,updated:0}}
+function stBody(){return {savedAt:state.savedAt||0,events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()}}
+function freshState(){return {events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{name:'',opp:'',date:'',home:''},mid:null,updated:0,savedAt:0}}
 function canWrite(){return CL.team&&(CL.role==='owner'||CL.role==='editor')}
 function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
   if(/Failed to fetch|NetworkError|network/i.test(m))return 'Non c’è connessione: riprova quando torna la rete.';
@@ -2471,6 +2518,8 @@ function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
   if(/already registered|already exists/i.test(m))return 'Questa email ha già un account: premi Entra.';
   if(/Email not confirmed/i.test(m))return 'Prima conferma l’email con il link che ti è arrivato, poi premi Entra.';
   if(/same.*password|different from the old/i.test(m))return 'La nuova password deve essere diversa da quella vecchia.';
+  if(/sending.*(email|mail)|smtp|535|authentication failed|Username and Password/i.test(m))return 'Il servizio email non riesce a inviare la mail: controlla le impostazioni SMTP in Supabase (utente Gmail e password per le app).';
+  if(/rate limit|over_email_send_rate|For security purposes/i.test(m))return 'Hai chiesto troppe mail in poco tempo: aspetta qualche minuto e riprova.';
   if(/captcha/i.test(m))return 'Verifica anti-robot non riuscita o scaduta: rifalla e riprova.';
   if(/Password should contain|characters/i.test(m))return 'La password deve avere almeno 8 caratteri, con lettere e numeri.';
   if(/Password should|weak|pwned|leaked/i.test(m))return 'Password troppo debole: usane una più lunga.';
@@ -2644,7 +2693,7 @@ function upArch(all){
   if(!canWrite()||!navigator.onLine)return;
   var id=CL.team,ids={},jobs=[];
   arch.forEach(function(m){ids[m.id]=1;
-    if(CLS.skip[m.id])return;
+    if(CLS.skip[m.id]||m.id===state.mid)return;
     if(!all&&CLS.synced[m.id]==null&&CLS.askedUp!==id)return;
     if(CLS.synced[m.id]===(m.saved||0))return;
     var sv=m.saved||Date.now();
@@ -2891,7 +2940,7 @@ HOOK.click=function(b,a){
     else switchTeam(j.id,{keepRoster:false});
     CL.msg='Sei entrato in «'+j.name+'».';renderCloud();return true}
   if(a==='clfollow'){var lv=CL.live;if(!lv)return true;
-    if(hasData()&&canWrite()){arch.push(snapMatch());arSave()}else if(hasData()){wsStash('local-'+Date.now())}
+    if(hasData()&&canWrite()){var sn=snapMatch();arch=arch.filter(function(m){return m.id!==sn.id});arch.push(sn);arSave()}else if(hasData()){wsStash('local-'+Date.now())}
     adopt(lv.data);state.mid=lv.id;lsSave();CL.live=null;ui.tab='scout';render();return true}
   return false;
 };
