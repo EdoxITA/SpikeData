@@ -63,3 +63,7 @@ In **Statistiche** ci sono anche **Salva PDF** e **Salva Excel**: il file Excel 
 Nella scheda **Statistiche** vedi i numeri per atleta, per set e per partita, e l'efficienza di squadra. Il pulsante **PDF** salva o condivide il report della partita.
 
 Per iniziare una nuova partita usa **Nuova partita** in Impostazioni: gli atleti restano in lista.
+
+## Servizio online (Supabase)
+
+Account, squadre condivise e partite online usano Supabase. Schema del database, regole di sicurezza, testi delle email e passaggi di configurazione sono nella cartella [`supabase/`](supabase/LEGGIMI.md). Informativa privacy: [`privacy.html`](privacy.html).

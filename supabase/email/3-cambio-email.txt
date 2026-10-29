@@ -1,0 +1,12 @@
+SUPABASE: Change email address  (cambio email)
+
+OGGETTO (Subject):
+Conferma il nuovo indirizzo email
+
+CORPO (Body, scheda Source):
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#12202c">
+  <h2 style="color:#1f4fd1;margin:0 0 12px">SpikeData</h2>
+  <p>Conferma che vuoi usare <b>{{ .NewEmail }}</b> per il tuo account SpikeData:</p>
+  <p style="margin:24px 0"><a href="{{ .ConfirmationURL }}" style="background:#1f4fd1;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">Conferma nuova email</a></p>
+  <p style="color:#5d6b78;font-size:13px">Se non l'hai chiesto tu, ignora questa email.</p>
+</div>
