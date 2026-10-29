@@ -15,8 +15,7 @@ La prima volta apri l'app con internet: poi funziona anche offline.
 
 Rosa, ruoli, importazione della distinta e dati della partita (avversario, data, *Nuova partita*) si trovano nella scheda **Squadra**; *Impostazioni* contiene solo le opzioni dell'app e l'account.
 
-
-Vai in **Impostazioni → Importa la distinta** e scegli un file PDF, Excel (.xlsx, .xls) o CSV con numero di maglia, nome, cognome e ruolo. Controlla l'anteprima, correggi se serve e conferma.
+Vai in **Squadra → Importa la distinta** e scegli un file PDF, Excel (.xlsx, .xls) o CSV con numero di maglia, nome, cognome e ruolo. Controlla l'anteprima, correggi se serve e conferma.
 
 Formato CSV consigliato: `numero;nome;cognome;ruolo`
 Ruoli: palleggio, banda, centrale, opposto, libero.
@@ -54,7 +53,7 @@ In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più 
 - **Time-out**: il pulsante *Time-out · situazione* apre in un attimo punteggio, ultimi 10 punti, al massimo 3 frasi su cosa dire alla squadra (rotazione critica, ricezione in difficoltà, errori in battuta, punto di forza…), side-out, break point, ricezione, attacco, punti regalati, rotazioni e distribuzione dell'alzata. Si può vedere il set o tutta la partita.
 - **Account e squadra condivisa** (accesso da *Impostazioni → Account* o dalla barra in alto; gestione nella scheda **Squadra**): ci si registra con email e password, si crea la squadra e si invitano altre persone con un link o un codice (valido 14 giorni, una persona). Per ogni invito si sceglie *Fa lo scout* oppure *Solo visione*. Rosa, partita in corso e archivio si salvano online: chi è in squadra vede la partita in diretta e ritrova l'archivio su ogni dispositivo. Il proprietario può cambiare ruolo o togliere le persone. Senza rete si continua a lavorare e i dati partono quando torna la connessione. Senza account l'app funziona come prima, solo sul dispositivo. Se dimentichi la password: scrivi l'email e tocca *Password dimenticata?*, apri il link nella mail e scegli la nuova password.
 - **Salva partita**: il pulsante *Salva partita* (in Scout e in Squadra → Partita) chiede nome e data e mette la partita in **Stagione**; si può continuare e salvare di nuovo. *Nuova partita* chiede di salvare se ci sono modifiche non salvate.
-- **Archivio e stagione**: con **Nuova partita** la partita finisce nella scheda **Stagione**, con risultato, side-out e break point e il rendimento di ogni atleta nella stagione, partita per partita. Avversario, data e casa/trasferta si inseriscono in Impostazioni. Da Stagione puoi riaprire o eliminare una partita ed esportare/importare un **backup** per spostare i dati su un altro dispositivo.
+- **Archivio e stagione**: con **Nuova partita** la partita finisce nella scheda **Stagione**, con risultato, side-out e break point e il rendimento di ogni atleta nella stagione, partita per partita. Avversario, data e casa/trasferta si inseriscono nella scheda Squadra. Da Stagione puoi riaprire o eliminare una partita ed esportare/importare un **backup** per spostare i dati su un altro dispositivo.
 
 Tutto compare anche nel PDF.
 
@@ -65,8 +64,8 @@ In **Statistiche** ci sono anche **Salva PDF** e **Salva Excel**: il file Excel 
 
 Nella scheda **Statistiche** vedi i numeri per atleta, per set e per partita, e l'efficienza di squadra. Il pulsante **PDF** salva o condivide il report della partita.
 
-Per iniziare una nuova partita usa **Nuova partita** in Impostazioni: gli atleti restano in lista.
+Per iniziare una nuova partita usa **Nuova partita** nella scheda Squadra: gli atleti restano in lista.
 
-## Servizio online (Supabase)
+## Privacy
 
-Account, squadre condivise e partite online usano Supabase. Schema del database, regole di sicurezza, testi delle email e passaggi di configurazione sono nella cartella [`supabase/`](supabase/LEGGIMI.md). Informativa privacy: [`privacy.html`](privacy.html).
+Come vengono trattati i dati dell'account e della squadra: [informativa privacy](privacy.html).
