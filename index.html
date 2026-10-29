@@ -185,7 +185,7 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
   .scorebar,.bar2{display:contents}
   .scorebar>.team:first-child{grid-column:1 / 4;grid-row:1}
   .scorebar>.team.right{grid-column:4 / 7;grid-row:1}
-  .team{justify-content:space-between;gap:4px}
+  .team,.team.right{justify-content:space-between;gap:4px}
   .team>div{text-align:center!important}
   .lbl{font-size:11px;letter-spacing:.08em}
   .pts{font-size:40px;min-width:0}
@@ -288,6 +288,8 @@ tfoot td{font-weight:600;border-top:2px solid var(--line)}
 .zleg{display:flex;gap:14px;justify-content:center;font-size:13px;color:var(--mute);margin-top:6px}
 
 .tabs.four button{font-size:14px;padding-inline:0}
+.tabs.five button{font-size:14px;padding-inline:0}
+@media (max-width:480px){.tabs.five button{font-size:12.5px;letter-spacing:-.01em}.tabs.four button{font-size:13.5px}}
 .sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow:auto;padding:max(12px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) 24px max(14px,env(safe-area-inset-left,0px))}
 .sheet[hidden]{display:none}
 .sin{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
@@ -435,6 +437,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
         <button role="tab" id="tabScout" aria-selected="true" data-tab="scout">Scout</button>
         <button role="tab" id="tabStats" aria-selected="false" data-tab="stats">Statistiche</button>
         <button role="tab" id="tabSeason" aria-selected="false" data-tab="season" hidden>Stagione</button>
+        <button role="tab" id="tabTeam" aria-selected="false" data-tab="team">Squadra</button>
         <button role="tab" id="tabSet" aria-selected="false" data-tab="set">Impostazioni</button>
       </div>
       <button class="undo" id="undo">↶ Annulla</button>
@@ -490,27 +493,9 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
     </div>
   </section>
 
-  <section id="paneSet" class="wrap" hidden>
-    <div class="card" id="cloudCard"><h2>Account e squadra</h2><div class="note" id="accSum"></div><div class="upl"><button class="btn solid" id="accOpenBtn" data-act="clopen">Accedi o crea un account</button></div></div>
-    <div class="card" id="instCard" hidden><h2>Installa l’app</h2>
-      <div class="note" id="instTxt"></div>
-      <div class="upl"><button class="btn solid" id="instBtn" hidden>Installa</button></div>
-    </div>
-    <div class="card" id="impCard"><h2>Importa la distinta</h2>
-      <div class="note">Carica un file PDF, Excel (.xlsx, .xls) o CSV con numero di maglia, nome, cognome e ruolo. Prima di aggiungere vedi un’anteprima e puoi correggere tutto.</div>
-      <div class="upl"><button class="btn solid" id="impBtn">Scegli file…</button>
-        <input type="file" id="impFile" accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden></div>
-      <div class="note" id="impMsg" role="status"></div>
-      <div id="impPrev"></div>
-    </div>
-    <div class="card switch">
-      <div><b>Punti automatici</b><div class="note">Ace e punto in attacco (+): +1 a noi. Ogni errore (−): +1 a loro. Annulla toglie anche il punto.</div></div>
-      <button id="autoBtn" data-act="auto" aria-pressed="true">Attivi</button>
-    </div>
-    <div class="card switch">
-      <div><b>Modalità avanzata</b><div class="note">Dopo ogni battuta e attacco puoi toccare le zone: da dove parte e dove arriva la palla (facoltativo a ogni azione). Mappa e zone compaiono in Statistiche e nel PDF. In più compare il fondamentale Muro: punto, normale (palla recuperata) o sbagliato.</div></div>
-      <button id="advBtn" data-act="adv" aria-pressed="false">Spenta</button>
-    </div>
+  <section id="paneTeam" class="wrap" hidden>
+    <div class="card" id="teamCloud"></div>
+
     <div class="card"><h2>Rosa e ruoli</h2>
       <div class="note" style="margin-bottom:6px">Con “Presente” spento l’atleta sparisce dallo scout. Le bande cambiano tra S1 e S2, i centrali tra C1 e C2, i liberi tra L1 e L2. Palleggio e opposti restano fissi.</div>
       <div id="roles"></div>
@@ -525,9 +510,12 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
       </div>
       <div class="note" id="addMsg" role="status" style="margin-top:8px"></div>
     </div>
-    <div class="card switch" id="rotCard" hidden>
-      <div><b>Formazione e rotazioni</b><div class="note">A inizio set inserisci i sei in campo e il libero: lo scout mostra solo chi è in campo e le rotazioni si aggiornano da sole quando conquistiamo il servizio. Cambi e doppi cambi si registrano in un tocco. In Statistiche compare il rendimento per rotazione.</div></div>
-      <button id="rotBtn" data-act="rot" aria-pressed="true">Attiva</button>
+    <div class="card" id="impCard"><h2>Importa la distinta</h2>
+      <div class="note">Carica un file PDF, Excel (.xlsx, .xls) o CSV con numero di maglia, nome, cognome e ruolo. Prima di aggiungere vedi un’anteprima e puoi correggere tutto.</div>
+      <div class="upl"><button class="btn solid" id="impBtn">Scegli file…</button>
+        <input type="file" id="impFile" accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden></div>
+      <div class="note" id="impMsg" role="status"></div>
+      <div id="impPrev"></div>
     </div>
     <div class="card"><h2>Partita</h2>
       <div id="matchMeta" hidden>
@@ -535,6 +523,27 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
         <div class="chips" id="mHome" role="group" aria-label="Casa o trasferta" style="margin-bottom:10px"></div>
       </div>
       <button class="btn danger" id="reset">Nuova partita</button><div class="note" id="msg2" role="status" style="margin-top:8px"></div></div>
+  </section>
+
+  <section id="paneSet" class="wrap" hidden>
+    <div class="card" id="cloudCard"><h2>Account</h2><div class="note" id="accSum"></div><div class="upl"><button class="btn solid" id="accOpenBtn" data-act="clopen">Accedi o crea un account</button></div></div>
+    <div class="card" id="instCard" hidden><h2>Installa l’app</h2>
+      <div class="note" id="instTxt"></div>
+      <div class="upl"><button class="btn solid" id="instBtn" hidden>Installa</button></div>
+    </div>
+
+    <div class="card switch">
+      <div><b>Punti automatici</b><div class="note">Ace e punto in attacco (+): +1 a noi. Ogni errore (−): +1 a loro. Annulla toglie anche il punto.</div></div>
+      <button id="autoBtn" data-act="auto" aria-pressed="true">Attivi</button>
+    </div>
+    <div class="card switch">
+      <div><b>Modalità avanzata</b><div class="note">Dopo ogni battuta e attacco puoi toccare le zone: da dove parte e dove arriva la palla (facoltativo a ogni azione). Mappa e zone compaiono in Statistiche e nel PDF. In più compare il fondamentale Muro: punto, normale (palla recuperata) o sbagliato.</div></div>
+      <button id="advBtn" data-act="adv" aria-pressed="false">Spenta</button>
+    </div>
+    <div class="card switch" id="rotCard" hidden>
+      <div><b>Formazione e rotazioni</b><div class="note">A inizio set inserisci i sei in campo e il libero: lo scout mostra solo chi è in campo e le rotazioni si aggiornano da sole quando conquistiamo il servizio. Cambi e doppi cambi si registrano in un tocco. In Statistiche compare il rendimento per rotazione.</div></div>
+      <button id="rotBtn" data-act="rot" aria-pressed="true">Attiva</button>
+    </div>
   </section>
   <div class="save" id="saveState"></div>
   <div class="sheet" id="sheet" hidden></div>
@@ -835,7 +844,7 @@ function renderScout(){
     h+='<button class="pl'+rcCls(p.n)+'" data-act="player" data-n="'+p.n+'" aria-pressed="'+(ui.player===p.n)+'" aria-label="'+p.n+' '+p.s+'">'+
       '<span class="tag">'+tagOf(p.n)+'</span><span class="n">'+p.n+'</span><span class="s">'+p.s+(p.cap?' ©':'')+'</span></button>';
   });
-  if(!h)h='<div class="card emptyplayers"><h2>Nessun atleta</h2><div class="note">Importa la distinta da un file PDF, Excel o CSV, oppure aggiungi i nomi a mano.</div><button class="btn solid" data-act="gotoset">Vai a Impostazioni</button></div>';
+  if(!h)h='<div class="card emptyplayers"><h2>Nessun atleta</h2><div class="note">Importa la distinta da un file PDF, Excel o CSV, oppure aggiungi i nomi a mano.</div><button class="btn solid" data-act="gotoset">Vai a Squadra</button></div>';
   $('players').innerHTML=h;
   var fb=PHS;
   if(ui.fund&&!phOk(ui.fund))ui.fund=null;
@@ -1113,8 +1122,8 @@ function renderSettings(){
 function render(){
   fixSel();renderHeader();
   if(ui.tab==='season'&&!state.adv)ui.tab='scout';
-  $('tabSeason').hidden=!state.adv;$('tabSeason').parentNode.className='tabs'+(state.adv?' four':'');
-  var map={scout:['paneScout','tabScout'],stats:['paneStats','tabStats'],season:['paneSeason','tabSeason'],set:['paneSet','tabSet']};
+  $('tabSeason').hidden=!state.adv;$('tabSeason').parentNode.className='tabs'+(state.adv?' five':' four');
+  var map={scout:['paneScout','tabScout'],stats:['paneStats','tabStats'],season:['paneSeason','tabSeason'],team:['paneTeam','tabTeam'],set:['paneSet','tabSet']};
   Object.keys(map).forEach(function(t){$(map[t][0]).hidden=ui.tab!==t;$(map[t][1]).setAttribute('aria-selected',ui.tab===t)});
   if(ui.tab==='scout')renderScout();else if(ui.tab==='stats')renderStats();else if(ui.tab==='season')renderSeason();else renderSettings();
   renderSheet();
@@ -2385,7 +2394,7 @@ document.addEventListener('click',function(ev){
   if(a==='impgo'){if(imp)impApply();return}
   if(a==='impcancel'){imp=null;$('impPrev').innerHTML='';$('impMsg').textContent='';return}
   if(a==='imporder'){if(imp){imp.order=b.getAttribute('data-v');runExtract()}return}
-  if(a==='gotoset'){ui.tab='set';render();setTimeout(function(){var c=$('impCard');if(c&&c.scrollIntoView)c.scrollIntoView({behavior:'smooth',block:'start'})},60);return}
+  if(a==='gotoset'){ui.tab='team';render();setTimeout(function(){var c=$('impCard');if(c&&c.scrollIntoView)c.scrollIntoView({behavior:'smooth',block:'start'})},60);return}
   if(a==='editdel'){
     var dn=+b.getAttribute('data-n');
     if(used(dn)){ui.msgE='Ha già azioni registrate: non si può eliminare.';ui.delArm=null;render();return}
@@ -2495,7 +2504,7 @@ function startTeam(){
 }
 function loadMembers(){
   var id=CL.team;
-  return CL.sb.from('team_members').select('user_id,email,role').eq('team_id',id).then(function(r){if(CL.team!==id)return;CL.members=(r.data||[]).sort(function(a,b){return (a.role==='owner'?0:a.role==='editor'?1:2)-(b.role==='owner'?0:b.role==='editor'?1:2)||String(a.email).localeCompare(String(b.email))});if(ui.tab==='set')render()});
+  return CL.sb.from('team_members').select('user_id,email,role').eq('team_id',id).then(function(r){if(CL.team!==id)return;CL.members=(r.data||[]).sort(function(a,b){return (a.role==='owner'?0:a.role==='editor'?1:2)-(b.role==='owner'?0:b.role==='editor'?1:2)||String(a.email).localeCompare(String(b.email))});if(ui.tab==='team')renderTeamCloud()});
 }
 function rosterObj(){return {extra:state.extra||[],edits:state.edits||{},roles:state.roles||{}}}
 function applyRoster(t){
@@ -2577,7 +2586,7 @@ function upNow(){
   }
   if(JSON.stringify(rosterObj())!==CL.rosterJson)jobs.push(upRoster());
   CL.dirty=false;clStatus();
-  Promise.all(jobs).then(function(){clSave();clStatus()},function(e){CL.dirty=true;CL.msg=clErr(e);clStatus();if(ui.tab==='set')renderCloud()});
+  Promise.all(jobs).then(function(){clSave();clStatus()},function(e){CL.dirty=true;CL.msg=clErr(e);clStatus();renderCloud()});
 }
 function upRoster(){
   var js=JSON.stringify(rosterObj()),now=Date.now(),id=CL.team;
@@ -2642,7 +2651,7 @@ function createTeam(){
       CLS.askedUp=id;clSave();
       if(first||!CL.team){switchTeam(id,{carry:true});upArch(true);upRoster().catch(function(){});schedUp()}
       else switchTeam(id,{keepRoster:false});
-      CL.msg='Squadra «'+nm+'» creata. Ora invita il coach o chi deve vedere le partite.';
+      CL.msg='Squadra «'+nm+'» creata. Ora invita il coach o chi deve vedere le partite.';CL.open=false;ui.tab='team';render();
     })})).catch(function(){});
 }
 function acceptInv(code){
@@ -2652,6 +2661,7 @@ function acceptInv(code){
     return loadTeams().then(function(){
       var t=CL.teams.filter(function(x){return x.id===id})[0],fromLocal=!CLS.team;
       var mine=fromLocal&&(hasData()||arch.length);
+      CL.open=false;ui.tab='team';
       if(t&&t.role!=='viewer'&&mine){CL.join={id:id,name:t.name};render();return}
       switchTeam(id,{keepRoster:false});CL.msg='Sei entrato in «'+(t?t.name:'squadra')+'» come '+(t?ROLEL[t.role].toLowerCase():'membro')+'.';
     })})).catch(function(){});
@@ -2662,13 +2672,15 @@ function makeInvite(role){
 function invLink(c){return location.origin+location.pathname+'?invito='+c}
 function shareInv(){
   var c=CL.inv&&CL.inv.code;if(!c)return;var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
-  var txt='Ti invito nella squadra '+(t?t.name:'')+' su SpikeData ('+ROLEL[CL.inv.role].toLowerCase()+'). Apri '+invLink(c)+' oppure, nell’app, Impostazioni → Account e squadra → codice invito: '+c;
-  if(navigator.share){navigator.share({title:'Invito SpikeData',text:txt}).catch(function(){})}
+  var can=CL.inv.role==='editor'?'potrai fare lo scout delle partite e vedere tutte le statistiche':'potrai seguire le partite in diretta e vedere tutte le statistiche';
+  var txt='Ciao! Ti invito nella squadra «'+(t?t.name:'')+'» su SpikeData, l’app che uso per lo scout delle partite di pallavolo: '+can+'.\n\nPer entrare:\n1. apri questo link: '+invLink(c)+'\n2. crea il tuo account con email e password (ci vuole un minuto)\ne sei già dentro la squadra.\n\nSe il link non si apre, nell’app vai su Squadra → «Hai un codice invito?» e scrivi: '+c+'\nL’invito vale 14 giorni.';
+  if(navigator.share){navigator.share({text:txt}).catch(function(){})}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CL.msg='Invito copiato: incollalo in WhatsApp o in una mail.';renderCloud()},function(){})}
 }
 
-/* ---- schermata Account e squadra (Impostazioni) ---- */
+/* ---- schermata Account (accesso) e scheda Squadra ---- */
 function renderCloud(){
+  renderTeamCloud();
   var el=$('cloudBox');if(!el)return;
   var h='';
   if(!cloudOn()){el.innerHTML='<div class="note">Il salvataggio online non è ancora attivo in questa versione dell’app.</div>';return}
@@ -2693,36 +2705,11 @@ function renderCloud(){
     else h+='<div class="note" style="text-align:center;margin-top:8px">Hai già un account? Tocca <b>Ho già un account</b>.</div>';
     h+='<button class="btn accno" data-act="clclose">Continua senza account</button>';
   }else{
+    h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SpikeData</div></div>';
     h+='<div class="srow"><span>Accesso: <b>'+esc(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
-    if(CL.join){
-      h+='<div class="card clask"><b>Benvenuto in «'+esc(CL.join.name)+'»</b><div class="note">Su questo dispositivo hai già dati (partita in corso o archivio). Vuoi portarli nella squadra?</div><div class="chips"><button data-act="cljoin" data-v="1">Sì, portali nella squadra</button><button data-act="cljoin" data-v="0">No, tienili a parte</button></div></div>';
-    }
-    if(CL.teams.length){
-      h+='<div class="note" style="margin-top:6px">Squadra attiva:</div><div class="chips">';
-      CL.teams.forEach(function(t){h+='<button data-act="clteam" data-id="'+t.id+'" aria-pressed="'+(CL.team===t.id)+'">'+esc(t.name)+' <small>· '+ROLEL[t.role]+'</small></button>'});
-      h+='<button data-act="clteam" data-id="" aria-pressed="'+(!CL.team)+'">Nessuna (solo dispositivo)</button></div>';
-    }
-    if(CL.team){
-      var t=CL.teams.filter(function(x){return x.id===CL.team})[0]||{};
-      if(CL.askUp)h+='<div class="card clask"><b>Partite su questo dispositivo</b><div class="note">Hai '+CL.askUp.n+(CL.askUp.n===1?' partita salvata':' partite salvate')+' solo qui. Le carico nella squadra «'+esc(t.name)+'» così le vede anche il coach?</div><div class="chips"><button data-act="clup" data-v="1">Sì, caricale</button><button data-act="clup" data-v="0">No</button></div></div>';
-      if(CL.live&&canWrite()!==null)h+='<div class="card clask"><b>Partita in corso nella squadra</b><div class="note">'+(CL.live.opp?'vs '+esc(CL.live.opp)+' · ':'')+'aggiornata alle '+hhmm(CL.live.updated)+'</div><div class="chips"><button data-act="clfollow">Apri e segui in diretta</button></div><div class="note">La partita che hai ora su questo dispositivo finisce in archivio (scheda Stagione).</div></div>';
-      h+='<h3 class="clh">Persone nella squadra</h3><div class="cllist">';
-      CL.members.forEach(function(m){var me=m.user_id===CL.user.id;
-        h+='<div class="clm"><span>'+esc(m.email||'—')+(me?' <small class="note">(tu)</small>':'')+'</span>';
-        if(CL.role==='owner'&&!me&&m.role!=='owner'){
-          h+='<span class="chips"><button data-act="clrole" data-u="'+m.user_id+'" data-r="editor" aria-pressed="'+(m.role==='editor')+'">Fa lo scout</button><button data-act="clrole" data-u="'+m.user_id+'" data-r="viewer" aria-pressed="'+(m.role==='viewer')+'">Solo visione</button><button data-act="clrm" data-u="'+m.user_id+'" class="d">'+(CL.delArm===m.user_id?'Tocca per togliere':'Togli')+'</button></span>';
-        }else h+='<small class="note">'+ROLEL[m.role]+'</small>';
-        h+='</div>'});
-      h+='</div>';
-      if(CL.role==='owner'){
-        h+='<h3 class="clh">Invita</h3><div class="chips"><button data-act="clinv" data-r="editor"'+B+'>Invita chi fa lo scout</button><button data-act="clinv" data-r="viewer"'+B+'>Invita chi guarda (solo visione)</button></div>';
-        if(CL.inv)h+='<div class="clinv"><div>Codice invito <b>'+esc(CL.inv.code)+'</b> · '+ROLEL[CL.inv.role].toLowerCase()+' · valido 14 giorni, una persona</div><div class="note" style="word-break:break-all">'+esc(invLink(CL.inv.code))+'</div><div class="chips"><button data-act="clshare">Condividi (WhatsApp, mail…)</button></div></div>';
-      }
-      h+='<div class="chips" style="margin-top:10px">'+(CL.role==='owner'?'<button data-act="cldelteam" class="d">'+(CL.leaveArm?'Tocca ancora: elimina la squadra per tutti':'Elimina squadra')+'</button>':'<button data-act="clleave" class="d">'+(CL.leaveArm?'Tocca ancora per uscire':'Esci dalla squadra')+'</button>')+'</div>';
-    }else{
-      h+='<h3 class="clh">Crea la tua squadra</h3><div class="clrow"><input id="clTeamName" maxlength="60" placeholder="nome della squadra"><button class="btn solid" data-act="clcreate"'+B+'>Crea</button></div>';
-    }
-    h+='<h3 class="clh">Hai un codice invito?</h3><div class="clrow"><input id="clInv" maxlength="12" placeholder="es. 7F3K9Q2A" style="text-transform:uppercase"><button class="btn" data-act="clacc"'+B+'>Entra nella squadra</button></div>';
+    var tt=CL.teams.filter(function(x){return x.id===CL.team})[0];
+    h+='<div class="note" style="margin-top:8px">'+(tt?'Squadra attiva: <b>'+esc(tt.name)+'</b> ('+ROLEL[tt.role].toLowerCase()+').':'Non sei ancora in una squadra.')+' Inviti, persone e rosa si gestiscono nella scheda <b>Squadra</b>.</div>';
+    h+='<button class="btn solid accgo" data-act="clgoteam">Vai alla squadra</button>';
   }
   if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
   if(CL.busy)h+='<div class="note">Attendi…</div>';
@@ -2731,6 +2718,46 @@ function renderCloud(){
   el.innerHTML=h;
   if($('clPw')&&pw0)$('clPw').value=pw0;
   if(f&&$(f)){$(f).value=val;$(f).focus()}
+}
+function renderTeamCloud(){
+  var el=$('teamCloud');if(!el)return;
+  if(!cloudOn()||!CL.ready){el.hidden=true;return}
+  el.hidden=false;var B=CL.busy?' disabled':'',t2='<h2>Squadra online</h2>';
+  if(!CL.user){t2+='<div class="note">Accedi per condividere la squadra con il coach: rosa, partite in diretta e archivio su ogni dispositivo.</div><div class="upl"><button class="btn solid" data-act="clopen">Accedi o crea un account</button></div>';el.innerHTML=t2;return}
+    if(CL.join){
+      t2+='<div class="card clask"><b>Benvenuto in «'+esc(CL.join.name)+'»</b><div class="note">Su questo dispositivo hai già dati (partita in corso o archivio). Vuoi portarli nella squadra?</div><div class="chips"><button data-act="cljoin" data-v="1">Sì, portali nella squadra</button><button data-act="cljoin" data-v="0">No, tienili a parte</button></div></div>';
+    }
+    if(CL.teams.length){
+      t2+='<div class="note" style="margin-top:6px">Squadra attiva:</div><div class="chips">';
+      CL.teams.forEach(function(t){t2+='<button data-act="clteam" data-id="'+t.id+'" aria-pressed="'+(CL.team===t.id)+'">'+esc(t.name)+' <small>· '+ROLEL[t.role]+'</small></button>'});
+      t2+='<button data-act="clteam" data-id="" aria-pressed="'+(!CL.team)+'">Nessuna (solo dispositivo)</button></div>';
+    }
+    if(CL.team){
+      var t=CL.teams.filter(function(x){return x.id===CL.team})[0]||{};
+      if(CL.askUp)t2+='<div class="card clask"><b>Partite su questo dispositivo</b><div class="note">Hai '+CL.askUp.n+(CL.askUp.n===1?' partita salvata':' partite salvate')+' solo qui. Le carico nella squadra «'+esc(t.name)+'» così le vede anche il coach?</div><div class="chips"><button data-act="clup" data-v="1">Sì, caricale</button><button data-act="clup" data-v="0">No</button></div></div>';
+      if(CL.live&&canWrite()!==null)t2+='<div class="card clask"><b>Partita in corso nella squadra</b><div class="note">'+(CL.live.opp?'vs '+esc(CL.live.opp)+' · ':'')+'aggiornata alle '+hhmm(CL.live.updated)+'</div><div class="chips"><button data-act="clfollow">Apri e segui in diretta</button></div><div class="note">La partita che hai ora su questo dispositivo finisce in archivio (scheda Stagione).</div></div>';
+      t2+='<h3 class="clh">Persone nella squadra</h3><div class="cllist">';
+      CL.members.forEach(function(m){var me=m.user_id===CL.user.id;
+        t2+='<div class="clm"><span>'+esc(m.email||'—')+(me?' <small class="note">(tu)</small>':'')+'</span>';
+        if(CL.role==='owner'&&!me&&m.role!=='owner'){
+          t2+='<span class="chips"><button data-act="clrole" data-u="'+m.user_id+'" data-r="editor" aria-pressed="'+(m.role==='editor')+'">Fa lo scout</button><button data-act="clrole" data-u="'+m.user_id+'" data-r="viewer" aria-pressed="'+(m.role==='viewer')+'">Solo visione</button><button data-act="clrm" data-u="'+m.user_id+'" class="d">'+(CL.delArm===m.user_id?'Tocca per togliere':'Togli')+'</button></span>';
+        }else t2+='<small class="note">'+ROLEL[m.role]+'</small>';
+        t2+='</div>'});
+      t2+='</div>';
+      if(CL.role==='owner'){
+        t2+='<h3 class="clh">Invita</h3><div class="chips"><button data-act="clinv" data-r="editor"'+B+'>Invita chi fa lo scout</button><button data-act="clinv" data-r="viewer"'+B+'>Invita chi guarda (solo visione)</button></div>';
+        if(CL.inv)t2+='<div class="clinv"><div>Codice invito <b>'+esc(CL.inv.code)+'</b> · '+ROLEL[CL.inv.role].toLowerCase()+' · valido 14 giorni, una persona</div><div class="note" style="word-break:break-all">'+esc(invLink(CL.inv.code))+'</div><div class="chips"><button data-act="clshare">Condividi (WhatsApp, mail…)</button></div></div>';
+      }
+      t2+='<div class="chips" style="margin-top:10px">'+(CL.role==='owner'?'<button data-act="cldelteam" class="d">'+(CL.leaveArm?'Tocca ancora: elimina la squadra per tutti':'Elimina squadra')+'</button>':'<button data-act="clleave" class="d">'+(CL.leaveArm?'Tocca ancora per uscire':'Esci dalla squadra')+'</button>')+'</div>';
+    }else{
+      t2+='<h3 class="clh">Crea la tua squadra</h3><div class="clrow"><input id="clTeamName" maxlength="60" placeholder="nome della squadra"><button class="btn solid" data-act="clcreate"'+B+'>Crea</button></div>';
+    }
+    t2+='<h3 class="clh">Hai un codice invito?</h3><div class="clrow"><input id="clInv" maxlength="12" placeholder="es. 7F3K9Q2A" style="text-transform:uppercase"><button class="btn" data-act="clacc"'+B+'>Entra nella squadra</button></div>';
+  if(CL.msg&&!CL.open)t2+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
+  if(CL.busy&&!CL.open)t2+='<div class="note">Attendi…</div>';
+  var f=document.activeElement&&document.activeElement.id,val=f&&$(f)?$(f).value:null;
+  el.innerHTML=t2;
+  if(f&&$(f)&&el.contains($(f))){$(f).value=val;$(f).focus()}
 }
 function openAcc(){CL.open=true;renderAcc();var b=$('accSheet');if(b)b.scrollTop=0}
 function closeAcc(){CL.open=false;CL.msg='';renderAcc()}
@@ -2744,9 +2771,9 @@ function renderAccSum(){
   if(!cloudOn()){el.textContent='Il salvataggio online non è attivo in questa versione.';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
   el.innerHTML=CL.user?('Accesso: <b>'+esc(CL.user.email||'')+'</b>'+(t?' · squadra <b>'+esc(t.name)+'</b> ('+ROLEL[t.role].toLowerCase()+')':' · nessuna squadra')):'Non hai fatto l’accesso: le partite restano solo su questo dispositivo.';
-  var bt=$('accOpenBtn');if(bt)bt.textContent=CL.user?'Apri account e squadra':'Accedi o crea un account';
+  var bt=$('accOpenBtn');if(bt)bt.textContent=CL.user?'Apri account':'Accedi o crea un account';
 }
-HOOK.render=function(){renderAcc();renderAccSum();clStatus();renderLiveBar()};
+HOOK.render=function(){renderAcc();renderAccSum();if(ui.tab==='team')renderTeamCloud();clStatus();renderLiveBar()};
 function renderLiveBar(){
   var el=$('clLive');if(!el)return;
   if(!cloudOn()||!CL.ready){el.hidden=true;return}
@@ -2756,13 +2783,14 @@ function renderLiveBar(){
     el.innerHTML='<span>Salva online e condividi con il coach</span><span class="clb"><button class="pri" data-act="clopen">Accedi</button><button class="x" data-act="clhide" aria-label="Nascondi">✕</button></span>';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
   el.hidden=false;el.className='cllive';
-  el.innerHTML='<span>'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+esc(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
+  el.innerHTML='<span class="cltn" data-act="clgoteam" role="button">'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+esc(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
 }
 HOOK.click=function(b,a){
   if(!a||!/^cl/.test(a))return false;
   if(a==='clpw'){CL.showPw=!CL.showPw;var pi=$('clPw');if(pi){pi.type=CL.showPw?'text':'password';var pos=pi.value.length;pi.focus();try{pi.setSelectionRange(pos,pos)}catch(e){}}
     b.setAttribute('aria-pressed',CL.showPw);b.textContent=CL.showPw?'Nascondi':'Mostra';b.setAttribute('aria-label',CL.showPw?'Nascondi password':'Mostra password');return true}
   if(a==='clopen'){openAcc();return true}
+  if(a==='clgoteam'){CL.open=false;CL.msg='';ui.tab='team';render();try{window.scrollTo(0,0)}catch(e){}return true}
   if(a==='clclose'){closeAcc();return true}
   if(a==='clhide'){CLS.hideBar=1;clSave();renderLiveBar();return true}
   if(a==='clmode'){CL.mode=b.getAttribute('data-v');CL.msg='';renderCloud();return true}
