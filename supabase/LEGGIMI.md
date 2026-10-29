@@ -7,7 +7,7 @@ Nessuna password o chiave segreta è salvata in questa cartella.
 2. **Authentication → URL Configuration**: Site URL e Redirect URLs = indirizzo dell'app (`https://edoxita.github.io/SpikeData/`).
 3. **Authentication → Sign In / Providers → Email**: password minimo 8 caratteri con lettere e numeri; *Confirm email* attivo solo con SMTP configurato.
 4. **Authentication → Emails → SMTP Settings**: Gmail di SpikeData (`smtp.gmail.com`, porta 587, password per le app di Google).
-5. **Authentication → Emails → Templates**: testi in `email/` (oggetto in *Subject*, corpo in *Body*).
+5. **Authentication → Emails → Templates**: per ogni mail incolla tutto il file `.html` di `email/` nel *Body* (scheda Source) e l’oggetto da `email/OGGETTI.txt` nel *Subject*.
 6. **Authentication → Attack Protection**: Captcha Cloudflare Turnstile con la Secret Key (la Site Key pubblica è già nell'app).
 
 Nell'app servono solo l'indirizzo del progetto e la chiave pubblica (*publishable*), che sono pensati per stare nel codice.

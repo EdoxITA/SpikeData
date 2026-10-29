@@ -1,0 +1,6 @@
+Oggetti (campo Subject) da mettere in Supabase:
+
+Confirm signup ........ Conferma il tuo account SpikeData
+Reset password ........ Nuova password per SpikeData
+Change email address .. Conferma il nuovo indirizzo email
+Magic link ............ Il tuo accesso a SpikeData
