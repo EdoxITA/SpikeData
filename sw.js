@@ -1,8 +1,8 @@
 /* Service worker: tiene l'app disponibile offline.
    Quando pubblichi una nuova versione, cambia CACHE (es. v2) così i telefoni si aggiornano. */
-var CACHE = 'scout-volley-v14';
+var CACHE = 'scout-volley-v15';
 var CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png", "fonts/barlow-condensed-latin-500-normal.woff2", "fonts/barlow-condensed-latin-600-normal.woff2", "fonts/barlow-condensed-latin-700-normal.woff2", "fonts/barlow-latin-400-normal.woff2", "fonts/barlow-latin-500-normal.woff2", "fonts/barlow-latin-600-normal.woff2"];
-var LAZY = ["vendor/xlsx.core.min.js", "vendor/pdf.min.js", "vendor/pdf.worker.min.js"];
+var LAZY = ["vendor/supabase.js", "vendor/xlsx.core.min.js", "vendor/pdf.min.js", "vendor/pdf.worker.min.js"];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
