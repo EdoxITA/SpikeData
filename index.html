@@ -383,6 +383,8 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .pwbox{position:relative}.pwbox input{width:100%;padding-right:96px}
 .pweye{position:absolute;right:6px;top:50%;transform:translateY(-50%);height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:14px}
 .pweye[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips button.lnk{border:0;background:none;color:var(--accent);text-decoration:underline;padding:0 6px}
+.clcred.one{grid-template-columns:1fr}
 .chips button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .clrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0}
 .clrow input{height:48px;min-width:0;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
@@ -2394,6 +2396,7 @@ function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
   if(/Invalid login credentials/i.test(m))return 'Email o password sbagliate. Se è la prima volta, premi Crea account.';
   if(/already registered|already exists/i.test(m))return 'Questa email ha già un account: premi Entra.';
   if(/Email not confirmed/i.test(m))return 'Prima conferma l’email con il link che ti è arrivato, poi premi Entra.';
+  if(/same.*password|different from the old/i.test(m))return 'La nuova password deve essere diversa da quella vecchia.';
   if(/Password should|weak/i.test(m))return 'Password troppo debole: usane una più lunga.';
   return m||'Qualcosa è andato storto.'}
 function clStatus(){
@@ -2431,11 +2434,12 @@ function switchTeam(id,opt){
 function cloudInit(){
   var m=/[?&]invito=([A-Za-z0-9]{6,12})/.exec(location.search);
   if(m){CLS.pendingInv=m[1].toUpperCase();clSave();try{history.replaceState(null,'',location.pathname)}catch(e){}}
+  if(/type=recovery/.test(location.hash)){CL.recover=true;ui.tab='set'}
   if(!cloudOn()){renderCloud();return}
   var mk=window.__SBMOCK?Promise.resolve():(window.supabase?Promise.resolve():loadScript('vendor/supabase.js'));
   mk.then(function(){
     CL.sb=window.__SBMOCK||window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'implicit',storageKey:'scout-volley-auth'}});
-    CL.sb.auth.onAuthStateChange(function(ev,ses){var u=ses&&ses.user;if((u&&u.id)!==(CL.user&&CL.user.id)){CL.user=u||null;afterAuth()}});
+    CL.sb.auth.onAuthStateChange(function(ev,ses){if(ev==='PASSWORD_RECOVERY'){CL.recover=true;CL.msg='';ui.tab='set';setTimeout(render,0)}var u=ses&&ses.user;if((u&&u.id)!==(CL.user&&CL.user.id)){CL.user=u||null;afterAuth()}});
     return CL.sb.auth.getSession();
   }).then(function(r){CL.ready=true;var u=r&&r.data&&r.data.session&&r.data.session.user;if(u&&!CL.user){CL.user=u;afterAuth()}else renderCloud()},
     function(){CL.ready=true;CL.msg='Non riesco a collegarmi al servizio online. L’app funziona comunque su questo dispositivo.';renderCloud()});
@@ -2451,6 +2455,7 @@ function afterAuth(){
     if(want&&CLS.team===want){CL.team=want;var t=CL.teams.filter(function(x){return x.id===want})[0];CL.role=t.role;render();startTeam()}
     else if(want){switchTeam(want)}
     else if(CLS.team){wsStash(CLS.team);CL.team=null;CLS.team=null;clSave();wsLoad('local',true);render()}
+    else if(CL.teams.length&&!hasData()&&!arch.length){switchTeam(CL.teams[0].id)}
     else render();
   });
 }
@@ -2591,6 +2596,20 @@ function credOk(){
 function gotUser(r){if(r.error)throw r.error;var u=r.data&&(r.data.user&&r.data.session?r.data.user:(r.data.session&&r.data.session.user));
   if(!u){CL.msg='Account creato: apri la mail di conferma che ti ha mandato Supabase, poi torna qui e premi Entra.';return}
   if(!CL.user||CL.user.id!==u.id){CL.user=u;CL.msg='';afterAuth()}}
+function forgotPw(){
+  var em=($('clEmail')&&$('clEmail').value||'').trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){CL.msg='Scrivi prima la tua email, poi premi «Password dimenticata?».';renderCloud();return}
+  CL.email=em;
+  clBusy(CL.sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname}).then(function(r){if(r.error)throw r.error;
+    CL.msg='Ti ho mandato una mail a '+em+' (controlla anche lo spam). Apri il link: si apre una pagina dove scegli la nuova password. Poi torna qui ed entra con la nuova password.'})).catch(function(){});
+}
+function newPw(){
+  var pw=($('clPw')&&$('clPw').value)||'';
+  if(pw.length<6){CL.msg='La password deve avere almeno 6 caratteri.';renderCloud();return}
+  clBusy(CL.sb.auth.updateUser({password:pw}).then(function(r){if(r.error)throw r.error;CL.recover=false;CL.showPw=false;
+    try{history.replaceState(null,'',location.pathname)}catch(e){}
+    CL.msg='Password cambiata. Sei dentro: se usi l’app installata sul telefono, aprila ed entra con la nuova password.'})).catch(function(){});
+}
 function signIn(){var c=credOk();if(!c)return;clBusy(CL.sb.auth.signInWithPassword(c).then(gotUser)).catch(function(){})}
 function signUp(){var c=credOk();if(!c)return;clBusy(CL.sb.auth.signUp({email:c.email,password:c.password,options:{emailRedirectTo:location.origin+location.pathname}}).then(gotUser)).catch(function(){})}
 function createTeam(){
@@ -2634,10 +2653,17 @@ function renderCloud(){
   if(!cloudOn()){el.innerHTML='<div class="note">Il salvataggio online non è ancora attivo in questa versione dell’app.</div>';return}
   if(!CL.ready){el.innerHTML='<div class="note">Collegamento in corso…</div>';return}
   var B=CL.busy?' disabled':'';
+  if(CL.recover&&CL.user){
+    h+='<div class="card clask"><b>Scegli la nuova password</b><div class="note">Account: '+esc(CL.user.email||'')+'</div>';
+    h+='<div class="clcred one"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nuova password (almeno 6 caratteri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
+    h+='<div class="chips"><button class="pri" data-act="clnewpw"'+B+'>Salva la nuova password</button></div></div>';
+    if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
+    el.innerHTML=h;return;
+  }
   if(!CL.user){
     h+='<div class="note">Accedi per salvare le partite online e condividerle con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div>';
     h+='<div class="clcred"><input id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="email" value="'+esc(CL.email)+'"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password (almeno 6 caratteri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
-    h+='<div class="chips"><button class="pri" data-act="clin"'+B+'>Entra</button><button data-act="clup2"'+B+'>Crea account</button></div><div class="note">La prima volta premi <b>Crea account</b>, poi basta <b>Entra</b>.</div>';
+    h+='<div class="chips"><button class="pri" data-act="clin"'+B+'>Entra</button><button data-act="clup2"'+B+'>Crea account</button><button class="lnk" data-act="clforgot"'+B+'>Password dimenticata?</button></div><div class="note">La prima volta premi <b>Crea account</b>, poi basta <b>Entra</b>.</div>';
     if(CLS.pendingInv)h+='<div class="note">Hai un invito (codice <b>'+esc(CLS.pendingInv)+'</b>): accedi e ti porto nella squadra.</div>';
   }else{
     h+='<div class="srow"><span>Accesso: <b>'+esc(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
@@ -2691,6 +2717,8 @@ HOOK.click=function(b,a){
   if(a==='clpw'){CL.showPw=!CL.showPw;var pi=$('clPw');if(pi){pi.type=CL.showPw?'text':'password';var pos=pi.value.length;pi.focus();try{pi.setSelectionRange(pos,pos)}catch(e){}}
     b.setAttribute('aria-pressed',CL.showPw);b.textContent=CL.showPw?'Nascondi':'Mostra';b.setAttribute('aria-label',CL.showPw?'Nascondi password':'Mostra password');return true}
   if(a==='clin'){signIn();return true}
+  if(a==='clforgot'){forgotPw();return true}
+  if(a==='clnewpw'){newPw();return true}
   if(a==='clup2'){signUp();return true}
   if(a==='clout'){CL.sb.auth.signOut().then(function(){CL.user=null;CL.msg='Sei uscito. I dati restano su questo dispositivo.';afterAuth()});return true}
   if(a==='clcreate'){createTeam();return true}
