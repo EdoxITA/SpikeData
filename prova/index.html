@@ -2664,7 +2664,7 @@ function renderCloud(){
       }
       h+='<div class="chips" style="margin-top:10px">'+(CL.role==='owner'?'<button data-act="cldelteam" class="d">'+(CL.leaveArm?'Tocca ancora: elimina la squadra per tutti':'Elimina squadra')+'</button>':'<button data-act="clleave" class="d">'+(CL.leaveArm?'Tocca ancora per uscire':'Esci dalla squadra')+'</button>')+'</div>';
     }else{
-      h+='<h3 class="clh">Crea la tua squadra</h3><div class="clrow"><input id="clTeamName" maxlength="60" placeholder="nome squadra, es. OSL"><button class="btn solid" data-act="clcreate"'+B+'>Crea</button></div>';
+      h+='<h3 class="clh">Crea la tua squadra</h3><div class="clrow"><input id="clTeamName" maxlength="60" placeholder="nome della squadra"><button class="btn solid" data-act="clcreate"'+B+'>Crea</button></div>';
     }
     h+='<h3 class="clh">Hai un codice invito?</h3><div class="clrow"><input id="clInv" maxlength="12" placeholder="es. 7F3K9Q2A" style="text-transform:uppercase"><button class="btn" data-act="clacc"'+B+'>Entra nella squadra</button></div>';
   }
