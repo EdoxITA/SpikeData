@@ -143,6 +143,7 @@ td.num{font-family:var(--f-disp);font-weight:700;font-size:20px;padding-right:6p
 td.zero{color:var(--mute);opacity:.55}
 tfoot td{font-weight:600;border-top:2px solid var(--line)}
 .eff{font-weight:600}
+.eff.neg{color:var(--o-err)}
 .note{color:var(--mute);font-size:13px}
 .save{font-size:12px;color:var(--mute);text-align:right}
 .card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px 14px}
@@ -941,7 +942,7 @@ function statsFor(list,pn,fk){
 }
 function effOf(c,type){
   if(!c.tot)return null;
-  return type==='a'?Math.max(0,(c['+']-c['-'])/c.tot):c['+']/c.tot;
+  return type==='a'?(c['+']-c['-'])/c.tot:c['+']/c.tot;
 }
 function pct(x){return x==null?'–':Math.round(x*100)+'%'}
 function renderStats(){
@@ -954,21 +955,24 @@ function renderStats(){
   var cols=two(F.k)?[['+','+',COL['+']],['.','•',COL['.']],['bad','Brutta','var(--o-minus)'],['ace',F.k==='R'?'Ace':'Errore','var(--o-err)']]:OUTS.map(function(o){return [o,OSYM[o],COL[o]]});
   var t='<thead><tr><th>Atleta</th><th>Tot</th>';
   cols.forEach(function(k){t+='<th style="color:'+k[2]+'">'+k[1]+'</th>'});
+  var pc=F.eff==='a'?[['+',F.k==='B'?'Ace %':'Punti %',COL['+']],['-','Err. %',COL['-']]]:[];
+  pc.forEach(function(k){t+='<th style="color:'+k[2]+'">'+k[1]+'</th>'});
   t+='<th>'+(F.eff==='a'?'Eff.':'Pos.')+'</th></tr></thead><tbody>';
+  function pcs(c){var r='';pc.forEach(function(k){r+='<td class="'+(c[k[0]]?'':'zero')+'">'+pct(c[k[0]]/c.tot)+'</td>'});return r}
   roster().forEach(function(p){
     var c=statsFor(list,p.n,F.k);if(!c.tot)return;
     ['+','.','-','bad','ace','tot'].forEach(function(k){tot[k]+=c[k]});
     t+='<tr><td><b>'+p.n+'</b> '+p.s+' <small class="note">'+tagOf(p.n)+'</small></td><td class="num">'+c.tot+'</td>';
     cols.forEach(function(k){t+='<td class="'+(c[k[0]]?'':'zero')+'">'+c[k[0]]+'</td>'});
-    t+='<td class="eff">'+pct(effOf(c,F.eff))+'</td></tr>';
+    t+=pcs(c)+'<td class="eff'+(effOf(c,F.eff)<0?' neg':'')+'">'+pct(effOf(c,F.eff))+'</td></tr>';
   });
-  if(!tot.tot){t+='<tr><td colspan="7" class="empty" style="text-align:left;position:static">Nessun dato per '+F.n.toLowerCase()+' in questa selezione.</td></tr></tbody>'}
+  if(!tot.tot){t+='<tr><td colspan="9" class="empty" style="text-align:left;position:static">Nessun dato per '+F.n.toLowerCase()+' in questa selezione.</td></tr></tbody>'}
   else{t+='</tbody><tfoot><tr><td>Squadra</td><td class="num">'+tot.tot+'</td>';
-    cols.forEach(function(k){t+='<td>'+tot[k[0]]+'</td>'});t+='<td class="eff">'+pct(effOf(tot,F.eff))+'</td></tr></tfoot>'}
+    cols.forEach(function(k){t+='<td>'+tot[k[0]]+'</td>'});t+=pcs(tot)+'<td class="eff'+(effOf(tot,F.eff)<0?' neg':'')+'">'+pct(effOf(tot,F.eff))+'</td></tr></tfoot>'}
   $('tbl').innerHTML=t;
   renderZoneMap(list);renderZoneDet(list);renderRally();renderRotStats();renderSetStats();renderSubStats();renderFaults();
   $('effNote').textContent=F.eff==='a'?
-    'Efficienza = (punti − errori) ÷ azioni, mai sotto lo 0%. + punto, − errore.':
+    (F.k==='B'?'Efficienza = (ace − errori) ÷ battute: sotto lo 0% vuol dire più errori che ace. Ace % e Err. % = ace ed errori sul totale delle battute.':'Efficienza = (punti − errori) ÷ attacchi: sotto lo 0% vuol dire più errori che punti. Punti % e Err. % = punti ed errori sul totale.'):
     (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':F.k==='D'?'Positività = difese buone (+) ÷ totali. Brutta = difesa sbagliata ma la palla resta in gioco (nessun punto). Errore = punto subito.':'Positività = azioni buone (+) ÷ azioni totali.');
 }
 
@@ -1096,12 +1100,18 @@ function renderZoneMap(list){
   }else{
     if(ui.zo!=null&&!use.some(function(e){return e.z&&e.z.a===ui.zo}))ui.zo=null;
     var sel=serve?null:ui.zo,sub=use.filter(function(e){return e.z&&e.z.b&&(sel==null||e.z.a===sel)}),T={p:0,d:0,e:0};
-    sub.forEach(function(e){if(e.o==='+')T.p++;else if(e.o==='-')T.e++;else T.d++});
+    /* il riepilogo conta tutte le azioni (anche gli errori in rete/fuori, che non hanno zona di arrivo) */
+    var allS=all.filter(function(e){return sel==null||(e.z&&e.z.a===sel)});
+    allS.forEach(function(e){if(e.o==='+')T.p++;else if(e.o==='-')T.e++;else T.d++});
+    var EB=serve?serveErr(allS):attErr(allS),ebt='';
+    if(EB.tot){var bits=serve?[[EB.n,'in rete'],[EB.f,'fuori']]:[[EB.m,'murati'],[EB.n,'a rete'],[EB.f,'fuori']];
+      if(EB.x)bits.push([EB.x,'non indicati']);
+      ebt='<div class="note" style="text-align:center;margin-top:2px"><b style="color:var(--o-err)">Errori</b>: '+bits.map(function(q){return '<b>'+q[0]+'</b> '+q[1]}).join(' · ')+'</div>'}
     if(!serve)h+='<div class="note" style="margin:2px 0 4px">Tocca una zona del nostro campo per vedere dove sono finite le azioni partite da lì. Tocca di nuovo per tornare a tutte.</div>';
     h+=zoneMapSVG(use,serve,sel);
     h+='<div class="zleg"><span style="color:var(--o-hash)">■ '+(serve?'ace':'punto')+'</span><span style="color:#b98700">■ '+(serve?'di là, senza ace':'attacco normale')+'</span><span style="color:var(--o-err)">■ errore</span></div>';
-    h+='<div class="zsum" style="text-align:center">'+(sel==null?(serve?'Battute':'Tutte le zone'):'Da <b>zona '+sel+'</b>')+': <b>'+sub.length+'</b> con arrivo · <b style="color:var(--o-hash)">'+T.p+'</b> '+(serve?'ace':'punto')+(sub.length?' ('+Math.round(T.p/sub.length*100)+'%)':'')+', <b style="color:#b98700">'+T.d+'</b> normali, <b style="color:var(--o-err)">'+T.e+'</b> errori</div>';
-    h+='<div class="note" style="text-align:center;margin-top:4px">'+use.length+' di '+all.length+' azioni con zona. Il numero è quante volte; la barra sotto il numero mostra come sono finite. Zone di arrivo numerate dalla loro parte.</div>';
+    h+='<div class="zsum" style="text-align:center">'+(sel==null?(serve?'Battute':'Tutte le zone'):'Da <b>zona '+sel+'</b>')+': <b>'+allS.length+'</b> · <b style="color:var(--o-hash)">'+T.p+'</b> '+(serve?'ace':'punti')+(allS.length?' ('+Math.round(T.p/allS.length*100)+'%)':'')+', <b style="color:#b98700">'+T.d+'</b> normali, <b style="color:var(--o-err)">'+T.e+'</b> errori'+(allS.length?' ('+Math.round(T.e/allS.length*100)+'%)':'')+'</div>'+ebt;
+    h+='<div class="note" style="text-align:center;margin-top:4px">'+use.length+' di '+all.length+' azioni con zona. Sulla mappa il numero è quante volte la palla è arrivata lì e la barra mostra come sono finite; gli errori in rete o fuori non hanno zona di arrivo e li trovi nel conteggio sopra. Zone di arrivo numerate dalla loro parte.</div>';
   }
   el.innerHTML=h;el.hidden=false;
 }
@@ -1470,7 +1480,7 @@ function buildPdf(){
   var tot=P.pages.length;
   P.pages.forEach(function(pg,i){P.cur=pg;
     P.line(PM,PH-PM-10,PW-PM,PH-PM-10,.5,LINEC);
-    P.text(PM,PH-PM+1,'+ bene / punto    \u2022 neutro / in gioco    \u2212 errore (ricezione e difesa: brutta = tenuta in campo, ace/err. = punto subito)    \u00b7    Eff. = (+ \u2212 \u2212) \u00f7 azioni, minimo 0% (battuta, attacco)    \u00b7    Pos. = + \u00f7 azioni (ricezione, difesa, alzata, appoggio, muro)',6.5,false,MUTEC);
+    P.text(PM,PH-PM+1,'+ bene / punto    \u2022 neutro / in gioco    \u2212 errore (ricezione e difesa: brutta = tenuta in campo, ace/err. = punto subito)    \u00b7    Eff. = (+ \u2212 \u2212) \u00f7 azioni, pu\u00f2 essere negativa (battuta, attacco)    \u00b7    Pos. = + \u00f7 azioni (ricezione, difesa, alzata, appoggio, muro)',6.5,false,MUTEC);
     P.text(PW-PM,PH-PM+1,(i+1)+' / '+tot,7,true,MUTEC,'r')});
   return new Blob([P.build()],{type:'application/pdf'});
 }
@@ -1574,7 +1584,7 @@ function renderSeason(){
   if(!ks.length)t+='<tr><td colspan="'+(cols.length+4)+'" class="note" style="padding:14px">Nessuna azione registrata.</td></tr>';
   else{t+='<tr class="tot"><td>Squadra</td><td></td><td class="num">'+tot.tot+'</td>';cols.forEach(function(k){t+='<td>'+tot[k[0]]+'</td>'});t+='<td class="eff">'+pct(effOf(tot,F.eff))+'</td></tr>'}
   $('sTbl').innerHTML=t+'</tbody>';
-  $('sNote').textContent='Tocca un atleta per vedere come è andato partita per partita. '+(F.eff==='a'?'Eff. = (+ − −) ÷ azioni, minimo 0%.':'Pos. = + ÷ azioni.');
+  $('sNote').textContent='Tocca un atleta per vedere come è andato partita per partita. '+(F.eff==='a'?'Eff. = (+ − −) ÷ azioni, può essere negativa.':'Pos. = + ÷ azioni.');
 }
 function bkExport(){
   var cur=hasData()?snapMatch():null,data={app:'scout-volley',v:1,exported:new Date().toISOString(),archive:arch,current:cur,roster:{extra:state.extra,edits:state.edits,roles:state.roles}};
@@ -1627,7 +1637,7 @@ function buildXlsx(){
   add('Atleti partita',xPlayers(state.events),[5,16,12,14]);
   sets.forEach(function(i){var l=state.events.filter(function(e){return e.set===i});if(l.length)add('Set '+i,xPlayers(l),[5,16,12,14])});
   if(state.adv&&state.rot){var RS=rotStats('all').rows;if(RS.length){var rr=[['Rotazione','Punti','Side-out vinti','Side-out tot','Break vinti','Break tot','Fatti','Subiti','Saldo','Ricezione +','Ricezione tot','Attacco eff.','Attacchi']];
-    RS.forEach(function(q){rr.push([rotName(q.k),q.so.n+q.bp.n,q.so.w,q.so.n,q.bp.w,q.bp.n,q.us,q.them,q.us-q.them,q.rec.tot?xPct(q.rec['+']/q.rec.tot):'',q.rec.tot,q.att.tot?xPct(Math.max(0,(q.att['+']-q.att['-'])/q.att.tot)):'',q.att.tot])});add('Rotazioni',rr,[22])}}
+    RS.forEach(function(q){rr.push([rotName(q.k),q.so.n+q.bp.n,q.so.w,q.so.n,q.bp.w,q.bp.n,q.us,q.them,q.us-q.them,q.rec.tot?xPct(q.rec['+']/q.rec.tot):'',q.rec.tot,q.att.tot?xPct((q.att['+']-q.att['-'])/q.att.tot):'',q.att.tot])});add('Rotazioni',rr,[22])}}
   if(state.adv){var SB=setBlocks(state.events);if(SB.length){var sr=[['Palleggio','Attaccante','Alzate','% alzate','Attacchi','Punti','Errori','Eff. attacco']];
     SB.forEach(function(b0){b0.rows.forEach(function(r){sr.push([b0.p+' '+pname(b0.p),r.n+' '+pname(r.n),r.sets,r.sets?xPct(r.sp):'',r.a,r.pl,r.er,r.a?xPct(r.ef):''])});sr.push([b0.p+' '+pname(b0.p),'Totale',b0.zt,'',b0.T.a,b0.T.pl,b0.T.er,b0.T.a?xPct(b0.T.ef):''])});add('Alzate',sr,[20,20])}}
   var az=[['Set','Scambio','Ora','Atleta','Fondamentale','Esito','Simbolo','Dettaglio','Zona partenza','Zona arrivo','Alzata a','Punto']];
@@ -1774,7 +1784,7 @@ function toTips(D){
     add('bad',70,'Ricezione in difficoltà: positiva al <b>'+pct(D.R['+']/D.R.tot)+'</b>'+(wrc&&wrc.v<.4?', soprattutto <b>'+wrc.p.n+' '+pname(wrc.p.n)+'</b> ('+wrc.p.R['+']+' buone su '+wrc.p.R.tot+(wrc.p.R.ace?', '+wrc.p.R.ace+' ace subiti':'')+').':'.'));
   }
   if(D.B['-']>=3)add('bad',65,'<b>'+D.B['-']+' battute sbagliate</b>'+(D.B.tot?' su '+D.B.tot:'')+': battete più sicure.');
-  var bad=null;D.per.forEach(function(p){var a=p.A;if(a.tot>=4){var e=Math.max(0,(a['+']-a['-'])/a.tot);if(e<.1&&(!bad||e<bad.e))bad={p:p,e:e}}});
+  var bad=null;D.per.forEach(function(p){var a=p.A;if(a.tot>=4){var e=(a['+']-a['-'])/a.tot;if(e<.1&&(!bad||e<bad.e))bad={p:p,e:e}}});
   if(bad)add('bad',55,'<b>'+bad.p.n+' '+pname(bad.p.n)+'</b> in attacco: '+bad.p.A['+']+' punti e '+bad.p.A['-']+' errori su '+bad.p.A.tot+'.');
   D.sb.forEach(function(b){var z=b.rows[0];if(b.zt>=6&&z&&z.sets/b.zt>=.5)add('info',50,'<b>'+pname(b.p)+'</b> alza il <b>'+pct(z.sets/b.zt)+'</b> su '+z.n+' '+pname(z.n)+': il muro avversario lo legge, variate.')});
   if(D.give>=8&&D.give>=D.sc.them*.6&&!D.all)add('bad',45,'Dei '+D.sc.them+' punti loro, <b>'+D.give+' sono nostri errori</b>.');
@@ -1797,7 +1807,7 @@ function toHtml(){
   function rt(k,lo,hi){if(!k.n)return tile('–',lo);var v=k.w/k.n;return tile(pct(v),lo+' ('+k.w+'/'+k.n+')',v<hi[0]?'bad':v>=hi[1]?'good':'')}
   h+='<div class="card"><div class="tiles">'+rt(D.so,'Side-out',[.45,.6])+rt(D.bp,'Break point',[.3,.5]);
   h+=D.R.tot?tile(pct(D.R['+']/D.R.tot),'Ricezione + ('+D.R['+']+'/'+D.R.tot+')',D.R['+']/D.R.tot<.4?'bad':D.R['+']/D.R.tot>=.55?'good':''):tile('–','Ricezione +');
-  var ae=D.A.tot?Math.max(0,(D.A['+']-D.A['-'])/D.A.tot):null;
+  var ae=D.A.tot?(D.A['+']-D.A['-'])/D.A.tot:null;
   h+=tile(ae==null?'–':pct(ae),'Attacco eff. ('+D.A['+']+' punti, '+D.A['-']+' err.)',ae==null?'':ae<.15?'bad':ae>=.3?'good':'');
   h+=tile(D.B['+']+' / '+D.B['-'],'Battuta: ace / errori',D.B['-']>D.B['+']+2?'bad':'');
   h+=tile(D.give+' / '+D.gift,'Punti regalati: noi / loro',D.give>D.gift+3?'bad':'')+'</div></div>';
@@ -1943,7 +1953,7 @@ function rotStats(setF){
   return {rows:keys.map(function(k){return Rr[k]}),any:any};
 }
 function rotCells(q){
-  var att=q.att.tot?Math.max(0,(q.att['+']-q.att['-'])/q.att.tot):null,rec=q.rec.tot?q.rec['+']/q.rec.tot:null;
+  var att=q.att.tot?(q.att['+']-q.att['-'])/q.att.tot:null,rec=q.rec.tot?q.rec['+']/q.rec.tot:null;
   return {pts:q.so.n+q.bp.n,so:rcell(q.so,false),bp:rcell(q.bp,false),bal:q.us-q.them,rec:rec==null?'–':pct(rec)+' ('+q.rec.tot+')',att:att==null?'–':pct(att)+' ('+q.att.tot+')'};
 }
 function renderRotStats(){
