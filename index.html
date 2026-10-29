@@ -386,6 +386,9 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .pweye{position:absolute;right:6px;top:50%;transform:translateY(-50%);height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:14px}
 .pweye[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .accs{z-index:30}
+.accpriv{text-align:center;margin-top:12px}.accpriv a{color:var(--accent);font-weight:600}
+.accdel{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}.accdel summary{cursor:pointer;color:var(--o-err);font-weight:600;font-size:15px}.accdel .note{margin:8px 0}
+.clcap{display:flex;justify-content:center;margin-top:14px;min-height:65px}
 .accw{text-align:center;margin:4px 0 10px}
 .acclogo{width:64px;height:64px;margin:0 auto 6px;border-radius:18px;background:var(--accent) url(icons/icon-192.png) center/cover}
 .accbrand{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.04em;color:var(--accent);margin-bottom:2px;font-size:18px}
@@ -547,7 +550,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
   </section>
   <div class="save" id="saveState"></div>
   <div class="sheet" id="sheet" hidden></div>
-  <div class="sheet accs" id="accSheet" hidden><div class="sin"><div class="srow"><h1 id="accTitle">Account</h1><button class="btn" data-act="clclose">Chiudi</button></div><div id="cloudBox"></div></div></div>
+  <div class="sheet accs" id="accSheet" hidden><div class="sin"><div class="srow"><h1 id="accTitle">Account</h1><button class="btn" data-act="clclose">Chiudi</button></div><div id="cloudBox"></div><div id="clCap" class="clcap" hidden></div></div></div>
 </div>
 
 <script>window.addEventListener('error',function(e){try{if(e.message==='Script error.'&&!e.lineno&&!e.filename)return;var d=document.createElement('pre');d.onclick=function(){d.remove()};d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;margin:0;background:#fff3f3;color:#900;padding:10px;font:12px monospace;white-space:pre-wrap;max-height:40vh;overflow:auto';d.textContent='Errore: '+(e.message||e.type)+' riga '+(e.lineno||'?');(document.body||document.documentElement).appendChild(d)}catch(x){}});</script>
@@ -625,17 +628,57 @@ function flush(){
   docRef.set(body).then(function(){writing=false;setSaveState('Salvato');if(dirty)flush()},
     function(){writing=false;setSaveState('Salvato su questo dispositivo (cloud non disponibile)')});
 }
+/* ---- sicurezza: i testi che arrivano da fuori (altri dispositivi, backup, file) non possono contenere codice ---- */
+var BADC=/[<>"`&\u0000-\u001f\u007f]/g,BADK=/^(__proto__|constructor|prototype)$/;
+function cleanS(v,max){return String(v==null?'':v).replace(BADC,'').slice(0,max||60)}
+function cleanN(v){v=typeof v==='number'?v:parseInt(v,10);return (isNaN(v)||v<0||v>99||v!==Math.floor(v))?null:v}
+var ROLEK={P:1,B:1,S1:1,S2:1,C:1,C1:1,C2:1,O:1,L1:1,L2:1};
+function cleanRole(r){return ROLEK[r]?r:'B'}
+function deepClean(o,d){d=d||0;if(d>14)return null;
+  if(typeof o==='string')return o.replace(BADC,'').slice(0,500);
+  if(typeof o==='number')return isFinite(o)?o:0;
+  if(Array.isArray(o))return o.slice(0,5000).map(function(x){return deepClean(x,d+1)});
+  if(o&&typeof o==='object'){var r={};Object.keys(o).forEach(function(k){if(BADK.test(k))return;r[k.replace(BADC,'')]=deepClean(o[k],d+1)});return r}
+  return (o===true||o===false||o===null)?o:null}
+function int(v,lo,hi){v=parseInt(v,10);return isNaN(v)||v<lo||v>hi?null:v}
+function cleanEv(e){
+  if(!e||typeof e!=='object')return null;
+  var okF=e.f==='OE'||!!fd(e.f);if(!okF)return null;
+  var r={t:typeof e.t==='number'?e.t:0,set:int(e.set,1,5)||1,p:e.f==='F4'||e.f==='FF'||e.f==='OE'?0:cleanN(e.p),f:e.f,o:e.o};
+  if(r.p==null)return null;
+  ['ri','si'].forEach(function(k){var v=int(e[k],0,999);if(v!=null)r[k]=v});
+  if(e.pt==='us'||e.pt==='them')r.pt=e.pt;if(e.ace)r.ace=1;if(e.sp)r.sp=1;
+  if(e.z&&typeof e.z==='object'){var za=int(e.z.a,1,6),zb=int(e.z.b,1,6);if(za!=null||zb!=null)r.z={a:za,b:zb}}
+  if(e.er==='n'||e.er==='f'||e.er==='m')r.er=e.er;
+  if(e.tg!=null){var tg=cleanN(e.tg);if(tg!=null)r.tg=tg}
+  if(e.f==='OE')r.x=({B:1,A:1,F:1,X:1})[e.x]?e.x:'X';
+  return r}
+function cleanRoster(){
+  var seen={},ex=[];(Array.isArray(state.extra)?state.extra:[]).forEach(function(x){if(!x)return;var n=cleanN(x.n);if(n==null||seen[n])return;seen[n]=1;
+    var o={n:n,s:cleanS(x.s,40)||'?',f:cleanS(x.f,40),r:cleanRole(x.r),extra:1};if(x.cap)o.cap=1;ex.push(o)});
+  state.extra=ex;
+  var ed={};Object.keys(state.edits||{}).forEach(function(k){var v=state.edits[k],id=cleanN(k);if(id==null||!v)return;var n=cleanN(v.n);ed[id]={n:n==null?id:n,s:cleanS(v.s,40),f:cleanS(v.f,40)}});state.edits=ed;
+  var ro={};Object.keys(state.roles||{}).forEach(function(k){var n=cleanN(k);if(n!=null&&ROLEK[state.roles[k]])ro[n]=state.roles[k]});state.roles=ro;
+  var m=state.meta||{};state.meta={opp:cleanS(m.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(m.date||'')?m.date:'',home:m.home==='H'||m.home==='T'?m.home:''};
+}
+function cleanMatch(m){if(!m||typeof m!=='object')return null;m=deepClean(m);if(!m||typeof m.id!=='string')return null;
+  m.events=Array.isArray(m.events)?migrate(m.events):[];
+  var nm={};Object.keys(m.names||{}).forEach(function(k){var n=cleanN(k),q=m.names[k];if(n==null||!q)return;nm[n]={s:cleanS(q.s,40),f:cleanS(q.f,40),r:cleanRole(q.r),cap:q.cap?1:0}});m.names=nm;
+  var mt=m.meta||{};m.meta={opp:cleanS(mt.opp,60),date:/^\d{4}-\d{2}-\d{2}$/.test(mt.date||'')?mt.date:'',home:mt.home==='H'||mt.home==='T'?mt.home:''};
+  return m}
 var OLDO={'#':'+','+':'+','!':'.','-':'-','=':'-'};
-function migrate(list){var r=[];list.forEach(function(e){if(!e)return;if(two(e.f)&&e.o==='-'&&e.pt==='them'&&!e.ace)e.ace=1;if(!OUTS_OK[e.o])e.o=OLDO[e.o]||'.';r.push(e)});return r}
+function migrate(list){var r=[];(Array.isArray(list)?list:[]).forEach(function(e){if(!e||typeof e!=='object')return;if(two(e.f)&&e.o==='-'&&e.pt==='them'&&!e.ace)e.ace=1;if(!OUTS_OK[e.o])e.o=OLDO[e.o]||'.';e=cleanEv(e);if(e)r.push(e)});return r}
 var OUTS_OK={'+':1,'.':1,'-':1};
 function adopt(d){
   try{d=JSON.parse(JSON.stringify(d))}catch(x){}
+  d=deepClean(d)||{};
   state.events=Array.isArray(d.events)?migrate(d.events):[];
   state.set=d.set||1;state.score=d.score||{};state.roles=d.roles||{};
   state.auto=d.auto!==false;state.adv=d.adv===true;state.extra=Array.isArray(d.extra)?d.extra:[];state.edits=d.edits||{};state.absent=d.absent||{};
   state.rally=Array.isArray(d.rally)?d.rally:[];state.first=d.first||{};
   state.lineup=d.lineup||{};state.subs=Array.isArray(d.subs)?d.subs:[];state.rot=d.rot!==false;state.meta=d.meta||{opp:'',date:'',home:''};state.mid=d.mid||null;
-  state.updated=d.updated||0;
+  state.updated=typeof d.updated==='number'?d.updated:0;state.set=int(state.set,1,5)||1;state.mid=typeof state.mid==='string'?state.mid.slice(0,64):null;
+  cleanRoster();
 }
 function applyRemote(d){
   if(!d||(d.updated||0)<=(state.updated||0))return;
@@ -1120,7 +1163,7 @@ function renderSettings(){
     $('mHome').innerHTML=[['H','Casa'],['T','Trasferta']].map(function(o){return '<button data-act="mhome" data-v="'+o[0]+'" aria-pressed="'+(mt.home===o[0])+'">'+o[1]+'</button>'}).join('')}
 }
 function render(){
-  fixSel();renderHeader();
+  cleanRoster();fixSel();renderHeader();
   if(ui.tab==='season'&&!state.adv)ui.tab='scout';
   $('tabSeason').hidden=!state.adv;$('tabSeason').parentNode.className='tabs'+(state.adv?' five':' four');
   var map={scout:['paneScout','tabScout'],stats:['paneStats','tabStats'],season:['paneSeason','tabSeason'],team:['paneTeam','tabTeam'],set:['paneSet','tabSet']};
@@ -1425,7 +1468,7 @@ function say(t){$('msg').textContent=t}
 
 /* ---- archivio e stagione (modalità avanzata) ---- */
 var AR=LS+'-arch';
-function arLoad(){try{var v=localStorage.getItem(AR);if(v){var a=JSON.parse(v);if(Array.isArray(a)){a.forEach(function(m){if(m&&Array.isArray(m.events))m.events=migrate(m.events)});return a}}}catch(e){}return []}
+function arLoad(){try{var v=localStorage.getItem(AR);if(v){var a=JSON.parse(v);if(Array.isArray(a))return a.map(cleanMatch).filter(Boolean)}}catch(e){}return []}
 var arch=arLoad();
 function arSave(){try{localStorage.setItem(AR,JSON.stringify(arch));if(HOOK.arch)HOOK.arch();return true}catch(e){return false}}
 function hasData(){return state.events.length>0||Object.keys(state.score).some(function(k){var q=state.score[k];return q&&(q.us||q.them)})}
@@ -1453,6 +1496,7 @@ function matchSum(it){return withState(it.st,function(){
   return {sw:sw,sets:sets,so:T.so,bp:T.bp,done:sw.us>=3||sw.them>=3}})}
 function mTitle(st){var mt=st.meta||{};return (mt.opp?'vs '+mt.opp:'Partita')+(mt.home==='H'?' · casa':mt.home==='T'?' · trasferta':'')}
 function adoptMatch(m){
+  m=cleanMatch(m)||{events:[]};
   state.events=m.events||[];state.set=m.set||1;state.score=m.score||{};state.rally=m.rally||[];state.first=m.first||{};state.absent=m.absent||{};
   state.lineup=m.lineup||{};state.subs=m.subs||[];state.meta=m.meta||{opp:'',date:'',home:''};state.mid=m.id;
   var have={};roster().forEach(function(p){have[p.n]=1});
@@ -1509,10 +1553,11 @@ function bkImport(txt){
   if(!d||d.app!=='scout-volley'||!Array.isArray(d.archive))return 'Questo non sembra un backup dello scout.';
   var add=0,ids={};arch.forEach(function(m){ids[m.id]=1});if(state.mid)ids[state.mid]=1;
   var list=d.archive.slice();if(d.current)list.push(d.current);
-  list.forEach(function(m){if(!m||!m.id||!Array.isArray(m.events)||ids[m.id])return;ids[m.id]=1;m.events=migrate(m.events);arch.push(m);add++});
-  var have={};roster().forEach(function(p){have[p.n]=1});var rr=d.roster||{};
+  list.forEach(function(m){m=cleanMatch(m);if(!m||!m.id||ids[m.id])return;ids[m.id]=1;arch.push(m);add++});
+  var have={};roster().forEach(function(p){have[p.n]=1});var rr=deepClean(d.roster||{})||{};
   (rr.extra||[]).forEach(function(x){if(x&&typeof x.n==='number'&&!have[x.n]){state.extra.push(x);have[x.n]=1}});
   Object.keys(rr.roles||{}).forEach(function(k){if(state.roles[k]==null)state.roles[k]=rr.roles[k]});
+  cleanRoster();
   arSave();persist();render();
   return 'Backup importato: '+add+(add===1?' partita aggiunta.':' partite aggiunte.');
 }
@@ -2017,7 +2062,7 @@ document.addEventListener('click',function(ev){
     if(!s){m.textContent='Scrivi il cognome.';return}
     if(pl(n)){m.textContent='Il numero '+n+' è già in lista ('+pl(n).s+').';return}
     s=cap1(s);var f0=cap1($('addF').value.trim());
-    state.extra.push({n:n,s:s,f:f0,r:r,extra:1});
+    state.extra.push({n:n,s:cleanS(s,40),f:cleanS(f0,40),r:cleanRole(r),extra:1});
     $('addN').value='';$('addS').value='';$('addF').value='';m.textContent='Aggiunta: '+n+' '+(f0?f0+' ':'')+s+' ('+$('addR').options[$('addR').selectedIndex].text+').';
     persist();render();return}
   if(b.id==='xlsx'){
@@ -2124,7 +2169,7 @@ document.addEventListener('click',function(ev){
 });
 document.addEventListener('input',function(ev){
   var t=ev.target;if(!t||!t.id)return;
-  if(t.id==='mOpp'){state.meta=state.meta||{};state.meta.opp=t.value.trim();persist()}
+  if(t.id==='mOpp'){state.meta=state.meta||{};state.meta.opp=cleanS(t.value.trim(),60);persist()}
   else if(t.id==='mDate'){state.meta=state.meta||{};state.meta.date=t.value;persist()}
 });
 document.addEventListener('change',function(ev){
@@ -2362,7 +2407,7 @@ function impApply(){
   use.forEach(function(r){
     var p=pl(r.n);
     if(p){p.s=r.s;p.f=r.f;p.r=r.r;delete state.roles[r.n];upd++}
-    else{state.extra.push({n:r.n,s:r.s,f:r.f,r:r.r,extra:1});add++}
+    else{state.extra.push({n:cleanN(r.n),s:cleanS(r.s,40),f:cleanS(r.f,40),r:cleanRole(r.r),extra:1});add++}
   });
   imp=null;$('impPrev').innerHTML='';
   m.textContent='Fatto: '+add+(add===1?' nome aggiunto':' nomi aggiunti')+(upd?', '+upd+' aggiornati':'')+'.';
@@ -2406,7 +2451,7 @@ document.addEventListener('click',function(ev){
 });
 
 /* ---- account, squadre condivise e sincronizzazione (Supabase) ---- */
-var SB_URL="https://fkmiahnezjamfiwgugat.supabase.co",SB_KEY="sb_publishable_riD0gAlTa8hmWwKuSlgbHA_uR-eA49u";
+var SB_URL="https://fkmiahnezjamfiwgugat.supabase.co",SB_KEY="sb_publishable_riD0gAlTa8hmWwKuSlgbHA_uR-eA49u",TS_KEY="0x4AAAAAAFrXboZLDbsUC4W-";
 var LSC='scout-volley-cloud',WS='scout-volley-ws-';
 var CL={sb:null,ready:false,user:null,teams:[],team:null,role:null,members:[],ch:null,step:'email',email:'',msg:'',busy:false,inv:null,
   dirty:false,tUp:null,tAr:null,rosterJson:null,live:null,askUp:null,delArm:null,leaveArm:null};
@@ -2426,7 +2471,9 @@ function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
   if(/already registered|already exists/i.test(m))return 'Questa email ha già un account: premi Entra.';
   if(/Email not confirmed/i.test(m))return 'Prima conferma l’email con il link che ti è arrivato, poi premi Entra.';
   if(/same.*password|different from the old/i.test(m))return 'La nuova password deve essere diversa da quella vecchia.';
-  if(/Password should|weak/i.test(m))return 'Password troppo debole: usane una più lunga.';
+  if(/captcha/i.test(m))return 'Verifica anti-robot non riuscita o scaduta: rifalla e riprova.';
+  if(/Password should contain|characters/i.test(m))return 'La password deve avere almeno 8 caratteri, con lettere e numeri.';
+  if(/Password should|weak|pwned|leaked/i.test(m))return 'Password troppo debole: usane una più lunga.';
   return m||'Qualcosa è andato storto.'}
 function clStatus(){
   if(!CL.team||!CL.user)return;
@@ -2510,7 +2557,7 @@ function rosterObj(){return {extra:state.extra||[],edits:state.edits||{},roles:s
 function applyRoster(t){
   if(!t||!t.roster_updated)return false;
   if(t.roster_updated<=(CLS.rosterAt[t.id]||0))return false;
-  var r=t.roster||{};state.extra=Array.isArray(r.extra)?r.extra:[];state.edits=r.edits||{};state.roles=r.roles||{};
+  var r=deepClean(t.roster||{})||{};state.extra=Array.isArray(r.extra)?r.extra:[];state.edits=r.edits||{};state.roles=r.roles||{};cleanRoster();
   CLS.rosterAt[t.id]=t.roster_updated;CL.rosterJson=JSON.stringify(rosterObj());clSave();lsSave();return true;
 }
 function pullAll(){
@@ -2537,6 +2584,7 @@ function pullAll(){
 }
 function mergeRow(m,quiet){
   if(!m||!m.data)return false;
+  if(m.status==='archived'){var cm=cleanMatch(m.data);if(!cm)return false;m={id:String(m.id),status:m.status,updated:+m.updated||0,data:cm}}
   if(m.status==='archived'){
     var d=m.data,i=-1;arch.forEach(function(x,k){if(x.id===m.id)i=k});
     CLS.synced[m.id]=m.updated;
@@ -2617,31 +2665,45 @@ HOOK.ro=function(b,a){
 
 /* ---- azioni ---- */
 function clBusy(p){CL.busy=true;CL.msg='';renderCloud();return p.then(function(x){CL.busy=false;renderCloud();return x},function(e){CL.busy=false;CL.msg=clErr(e);renderCloud();throw e})}
-function credOk(){
+function pwRule(pw){if(pw.length<8)return 'La password deve avere almeno 8 caratteri.';if(!/[A-Za-zÀ-ÿ]/.test(pw)||!/[0-9]/.test(pw))return 'La password deve contenere almeno una lettera e un numero.';return ''}
+function credOk(isNew){
   var em=($('clEmail')&&$('clEmail').value||'').trim().toLowerCase(),pw=($('clPw')&&$('clPw').value)||'';
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){CL.msg='Scrivi un indirizzo email valido.';renderCloud();return null}
-  if(pw.length<6){CL.msg='La password deve avere almeno 6 caratteri.';renderCloud();return null}
+  CL.email=em;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)||em.length>254){CL.msg='Scrivi un indirizzo email valido.';renderCloud();return null}
+  if(isNew){var pr=pwRule(pw);if(pr){CL.msg=pr;renderCloud();return null}}else if(!pw){CL.msg='Scrivi la password.';renderCloud();return null}
+  if(TS_KEY&&!CL.cap){CL.msg='Completa la verifica «Non sono un robot» qui sotto.';renderCloud();return null}
   CL.email=em;return {email:em,password:pw};
 }
 function gotUser(r){CL.mode='in';if(r.error)throw r.error;var u=r.data&&(r.data.user&&r.data.session?r.data.user:(r.data.session&&r.data.session.user));
-  if(!u){CL.msg='Account creato: apri la mail di conferma che ti ha mandato Supabase, poi torna qui e premi Entra.';return}
+  if(!u){CL.msg='Quasi fatto! Ti ho mandato una mail per confermare il tuo indirizzo (controlla anche lo spam). Apri il link, poi torna qui e premi Entra.';return}
   if(!CL.user||CL.user.id!==u.id){CL.user=u;CL.msg='';afterAuth()}}
 function forgotPw(){
   var em=($('clEmail')&&$('clEmail').value||'').trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){CL.msg='Scrivi prima la tua email, poi premi «Password dimenticata?».';renderCloud();return}
   CL.email=em;
-  clBusy(CL.sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname}).then(function(r){if(r.error)throw r.error;
-    CL.msg='Ti ho mandato una mail a '+em+' (controlla anche lo spam). Apri il link: si apre una pagina dove scegli la nuova password. Poi torna qui ed entra con la nuova password.'})).catch(function(){});
+  if(TS_KEY&&!CL.cap){CL.msg='Completa la verifica «Non sono un robot» qui sotto.';renderCloud();return}
+  clBusy(CL.sb.auth.resetPasswordForEmail(em,capOpt({redirectTo:location.origin+location.pathname})).then(function(r){if(r.error)throw r.error;
+    CL.msg='Ti ho mandato una mail a '+em+' (controlla anche lo spam). Apri il link: si apre una pagina dove scegli la nuova password. Poi torna qui ed entra con la nuova password.'})).catch(function(){}).then(capReset);
 }
 function newPw(){
   var pw=($('clPw')&&$('clPw').value)||'';
-  if(pw.length<6){CL.msg='La password deve avere almeno 6 caratteri.';renderCloud();return}
+  var pr=pwRule(pw);if(pr){CL.msg=pr;renderCloud();return}
   clBusy(CL.sb.auth.updateUser({password:pw}).then(function(r){if(r.error)throw r.error;CL.recover=false;CL.showPw=false;
     try{history.replaceState(null,'',location.pathname)}catch(e){}
     CL.msg='Password cambiata. Sei dentro: se usi l’app installata sul telefono, aprila ed entra con la nuova password.'})).catch(function(){});
 }
-function signIn(){var c=credOk();if(!c)return;clBusy(CL.sb.auth.signInWithPassword(c).then(gotUser)).catch(function(){})}
-function signUp(){var c=credOk();if(!c)return;clBusy(CL.sb.auth.signUp({email:c.email,password:c.password,options:{emailRedirectTo:location.origin+location.pathname}}).then(gotUser)).catch(function(){})}
+function capOpt(o){o=o||{};if(TS_KEY&&CL.cap)o.captchaToken=CL.cap;return o}
+function capReset(){CL.cap=null;try{if(window.turnstile&&CL.capId!=null)window.turnstile.reset(CL.capId)}catch(e){}}
+function capRender(){
+  var box=$('clCap');if(!box)return;var need=TS_KEY&&cloudOn()&&CL.open&&!CL.user;box.hidden=!need;if(!need)return;
+  if(CL.capId!=null||CL.capLoading)return;
+  CL.capLoading=true;
+  (window.turnstile?Promise.resolve():loadScript('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit')).then(function(){
+    CL.capLoading=false;try{CL.capId=window.turnstile.render(box,{sitekey:TS_KEY,language:'it',theme:'auto',callback:function(t){CL.cap=t},'expired-callback':function(){CL.cap=null},'error-callback':function(){CL.cap=null}})}catch(e){}
+  },function(){CL.capLoading=false;CL.msg='Non riesco a caricare la verifica anti-robot: controlla la connessione.';renderCloud()});
+}
+function signIn(){var c=credOk(false);if(!c)return;clBusy(CL.sb.auth.signInWithPassword({email:c.email,password:c.password,options:capOpt()}).then(gotUser)).catch(function(){}).then(capReset)}
+function signUp(){var c=credOk(true);if(!c)return;clBusy(CL.sb.auth.signUp({email:c.email,password:c.password,options:capOpt({emailRedirectTo:location.origin+location.pathname})}).then(gotUser)).catch(function(){}).then(capReset)}
 function createTeam(){
   var nm=($('clTeamName')&&$('clTeamName').value||'').trim();
   if(!nm){CL.msg='Scrivi il nome della squadra.';renderCloud();return}
@@ -2688,7 +2750,7 @@ function renderCloud(){
   var B=CL.busy?' disabled':'';
   if(CL.recover&&CL.user){
     h+='<div class="card clask"><b>Scegli la nuova password</b><div class="note">Account: '+esc(CL.user.email||'')+'</div>';
-    h+='<div class="clcred one"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nuova password (almeno 6 caratteri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
+    h+='<div class="clcred one"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nuova password (8+ caratteri, lettere e numeri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
     h+='<div class="chips"><button class="pri" data-act="clnewpw"'+B+'>Salva la nuova password</button></div></div>';
     if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
     el.innerHTML=h;return;
@@ -2699,17 +2761,22 @@ function renderCloud(){
     if(CLS.pendingInv)h+='<div class="clinv">Hai un invito in una squadra (codice <b>'+esc(CLS.pendingInv)+'</b>). '+(up?'Crea l’account':'Accedi')+' e ti porto dentro.</div>';
     h+='<div class="seg" role="tablist"><button role="tab" data-act="clmode" data-v="in" aria-selected="'+!up+'">Ho già un account</button><button role="tab" data-act="clmode" data-v="up" aria-selected="'+up+'">Sono nuovo</button></div>';
     h+='<label class="fl" for="clEmail">Email</label><input class="fin" id="clEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nome@esempio.it" value="'+esc(CL.email)+'">';
-    h+='<label class="fl" for="clPw">Password'+(up?' <small>(almeno 6 caratteri)</small>':'')+'</label><div class="pwbox"><input class="fin" id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="'+(up?'new-password':'current-password')+'" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="'+(up?'scegli una password':'la tua password')+'"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div>';
+    h+='<label class="fl" for="clPw">Password'+(up?' <small>(almeno 8 caratteri, con lettere e numeri)</small>':'')+'</label><div class="pwbox"><input class="fin" id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="'+(up?'new-password':'current-password')+'" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="'+(up?'scegli una password':'la tua password')+'"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div>';
     h+='<button class="btn solid accgo" data-act="'+(up?'clup2':'clin')+'"'+B+'>'+(up?'Crea account':'Entra')+'</button>';
     if(!up)h+='<button class="lnk accfg" data-act="clforgot"'+B+'>Hai dimenticato la password?</button>';
     else h+='<div class="note" style="text-align:center;margin-top:8px">Hai già un account? Tocca <b>Ho già un account</b>.</div>';
     h+='<button class="btn accno" data-act="clclose">Continua senza account</button>';
+    h+='<div class="note accpriv">'+(up?'Creando l’account accetti l’':'Leggi l’')+'<a href="privacy.html" target="_blank" rel="noopener">informativa privacy</a>.</div>';
   }else{
     h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SpikeData</div></div>';
     h+='<div class="srow"><span>Accesso: <b>'+esc(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
     var tt=CL.teams.filter(function(x){return x.id===CL.team})[0];
     h+='<div class="note" style="margin-top:8px">'+(tt?'Squadra attiva: <b>'+esc(tt.name)+'</b> ('+ROLEL[tt.role].toLowerCase()+').':'Non sei ancora in una squadra.')+' Inviti, persone e rosa si gestiscono nella scheda <b>Squadra</b>.</div>';
     h+='<button class="btn solid accgo" data-act="clgoteam">Vai alla squadra</button>';
+    var own=CL.teams.filter(function(x){return x.role==='owner'});
+    h+='<details class="accdel"><summary>Elimina account e dati</summary><div class="note">Elimina il tuo account e i tuoi dati online. '+(own.length?'<b>Verranno eliminate per tutti anche le squadre di cui sei proprietario ('+own.map(function(x){return '«'+esc(x.name)+'»'}).join(', ')+'), con rosa e partite.</b> ':'')+'Le partite salvate su questo dispositivo restano finché non le cancelli tu. L’operazione non si può annullare.</div>';
+    h+='<button class="btn danger" data-act="cldelacc"'+B+'>'+(CL.delAcc?'Tocca ancora: elimina definitivamente':'Elimina il mio account')+'</button></details>';
+    h+='<div class="note accpriv"><a href="privacy.html" target="_blank" rel="noopener">Informativa privacy</a></div>';
   }
   if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
   if(CL.busy)h+='<div class="note">Attendi…</div>';
@@ -2762,7 +2829,7 @@ function renderTeamCloud(){
 function openAcc(){CL.open=true;renderAcc();var b=$('accSheet');if(b)b.scrollTop=0}
 function closeAcc(){CL.open=false;CL.msg='';renderAcc()}
 function renderAcc(){
-  var sh=$('accSheet');if(!sh)return;
+  var sh=$('accSheet');if(!sh)return;setTimeout(capRender,0);
   if(!CL.open||!cloudOn()){sh.hidden=true;return}
   sh.hidden=false;$('accTitle').textContent=CL.user?'Account e squadra':'Account';renderCloud();
 }
@@ -2798,6 +2865,11 @@ HOOK.click=function(b,a){
   if(a==='clforgot'){forgotPw();return true}
   if(a==='clnewpw'){newPw();return true}
   if(a==='clup2'){signUp();return true}
+  if(a==='cldelacc'){if(!CL.delAcc){CL.delAcc=true;renderCloud();var dd=document.querySelector('.accdel');if(dd)dd.open=true;setTimeout(function(){if(CL.delAcc){CL.delAcc=false;renderCloud();var d2=document.querySelector('.accdel');if(d2)d2.open=true}},5000);return true}
+    CL.delAcc=false;var gone=CL.teams.filter(function(x){return x.role==='owner'}).map(function(x){return x.id});
+    clBusy(CL.sb.rpc('delete_my_account').then(function(r){if(r.error)throw r.error;return CL.sb.auth.signOut()}).then(function(){
+      gone.forEach(function(id){try{localStorage.removeItem(WS+id)}catch(e){}});CLS.lastTeam=null;CLS.team=CLS.team&&gone.indexOf(CLS.team)>=0?null:CLS.team;clSave();
+      CL.user=null;CL.msg='Account eliminato. L’app funziona ancora su questo dispositivo, senza salvataggio online.';afterAuth()})).catch(function(){});return true}
   if(a==='clout'){CL.sb.auth.signOut().then(function(){CL.user=null;CL.msg='Sei uscito. I dati restano su questo dispositivo.';afterAuth()});return true}
   if(a==='clcreate'){createTeam();return true}
   if(a==='clacc'){acceptInv($('clInv')&&$('clInv').value);return true}
