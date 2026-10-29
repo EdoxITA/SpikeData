@@ -46,11 +46,15 @@ In **Impostazioni → Modalità avanzata** (spenta di default) per livelli più 
 - **Posizioni reali in campo** (con formazione inserita): quando battiamo le giocatrici sono già in difesa (S in 4, C in 3, O in 2, P tra 2 e 3; dietro C o libero in 5, S in 6, O e P in 1). Quando battono loro si dispongono secondo gli schemi di ricezione a 3 per ogni rotazione (P1–P6, l'opposto non riceve). Dopo ricezione, difesa o appoggio passano in posizione d'attacco (il palleggio entra a rete). Le sigle in campo sono P, O, S1, S2, C1, C2, L1, L2: la formazione va inserita nell'ordine P, S1, C2, O, S2, C1.
 - **Zona d'attacco automatica**: la zona di partenza dell'attacco è compilata in base alla posizione (es. opposto in prima linea zona 2, in seconda linea zona 1); basta indicare dove cade.
 - **A chi alza il palleggio**: dopo l'alzata si sceglie la destinataria, che viene selezionata subito con *Attacco* pronto. In Statistiche e nel PDF: percentuale di alzate di ogni palleggio verso ogni attaccante e rendimento in attacco di ogni attaccante in base al palleggio in campo.
+- **Time-out**: il pulsante *Time-out · situazione* apre in un attimo punteggio, ultimi 10 punti, al massimo 3 frasi su cosa dire alla squadra (rotazione critica, ricezione in difficoltà, errori in battuta, punto di forza…), side-out, break point, ricezione, attacco, punti regalati, rotazioni e distribuzione dell'alzata. Si può vedere il set o tutta la partita.
 - **Archivio e stagione**: con **Nuova partita** la partita finisce nella scheda **Stagione**, con risultato, side-out e break point e il rendimento di ogni atleta nella stagione, partita per partita. Avversario, data e casa/trasferta si inseriscono in Impostazioni. Da Stagione puoi riaprire o eliminare una partita ed esportare/importare un **backup** per spostare i dati su un altro dispositivo.
 
 Tutto compare anche nel PDF.
 
 ## Statistiche e PDF
+
+In **Statistiche** ci sono anche **Salva PDF** e **Salva Excel**: il file Excel contiene riepilogo, statistiche per atleta (partita e singoli set), rotazioni, alzate e l'elenco di tutte le azioni.
+
 
 Nella scheda **Statistiche** vedi i numeri per atleta, per set e per partita, e l'efficienza di squadra. Il pulsante **PDF** salva o condivide il report della partita.
 
