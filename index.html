@@ -380,6 +380,9 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .upl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0}
 .clcred{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}@media (max-width:640px){.clcred{grid-template-columns:1fr}}
 .clcred input{height:48px;min-width:0;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
+.pwbox{position:relative}.pwbox input{width:100%;padding-right:96px}
+.pweye{position:absolute;right:6px;top:50%;transform:translateY(-50%);height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:14px}
+.pweye[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .chips button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .clrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:8px 0}
 .clrow input{height:48px;min-width:0;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:16px}
@@ -2633,7 +2636,7 @@ function renderCloud(){
   var B=CL.busy?' disabled':'';
   if(!CL.user){
     h+='<div class="note">Accedi per salvare le partite online e condividerle con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div>';
-    h+='<div class="clcred"><input id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="email" value="'+esc(CL.email)+'"><input id="clPw" type="password" autocomplete="current-password" placeholder="password (almeno 6 caratteri)"></div>';
+    h+='<div class="clcred"><input id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="email" value="'+esc(CL.email)+'"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password (almeno 6 caratteri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
     h+='<div class="chips"><button class="pri" data-act="clin"'+B+'>Entra</button><button data-act="clup2"'+B+'>Crea account</button></div><div class="note">La prima volta premi <b>Crea account</b>, poi basta <b>Entra</b>.</div>';
     if(CLS.pendingInv)h+='<div class="note">Hai un invito (codice <b>'+esc(CLS.pendingInv)+'</b>): accedi e ti porto nella squadra.</div>';
   }else{
@@ -2685,6 +2688,8 @@ function renderLiveBar(){
 }
 HOOK.click=function(b,a){
   if(!a||!/^cl/.test(a))return false;
+  if(a==='clpw'){CL.showPw=!CL.showPw;var pi=$('clPw');if(pi){pi.type=CL.showPw?'text':'password';var pos=pi.value.length;pi.focus();try{pi.setSelectionRange(pos,pos)}catch(e){}}
+    b.setAttribute('aria-pressed',CL.showPw);b.textContent=CL.showPw?'Nascondi':'Mostra';b.setAttribute('aria-label',CL.showPw?'Nascondi password':'Mostra password');return true}
   if(a==='clin'){signIn();return true}
   if(a==='clup2'){signUp();return true}
   if(a==='clout'){CL.sb.auth.signOut().then(function(){CL.user=null;CL.msg='Sei uscito. I dati restano su questo dispositivo.';afterAuth()});return true}
