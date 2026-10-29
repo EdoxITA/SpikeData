@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SCOUTDATA</title>
+<title>SpikeData</title>
 <meta name="theme-color" content="#1f4fd1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SCOUTDATA">
+<meta name="apple-mobile-web-app-title" content="SpikeData">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 [hidden]{display:none!important}
@@ -386,7 +386,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .accs{z-index:30}
 .accw{text-align:center;margin:4px 0 10px}
 .acclogo{width:64px;height:64px;margin:0 auto 6px;border-radius:18px;background:var(--accent) url(icons/icon-192.png) center/cover}
-.accbrand{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.18em;color:var(--accent);margin-bottom:2px}
+.accbrand{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.04em;color:var(--accent);margin-bottom:2px;font-size:18px}
 .acch{font-family:var(--f-disp);font-weight:700;font-size:28px;margin-bottom:4px}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--line);margin:6px 0 12px}
 .seg button{height:42px;border:0;border-radius:10px;background:none;font-weight:600;font-size:15px;color:var(--ink)}
@@ -2662,8 +2662,8 @@ function makeInvite(role){
 function invLink(c){return location.origin+location.pathname+'?invito='+c}
 function shareInv(){
   var c=CL.inv&&CL.inv.code;if(!c)return;var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
-  var txt='Ti invito nella squadra '+(t?t.name:'')+' su SCOUTDATA ('+ROLEL[CL.inv.role].toLowerCase()+'). Apri '+invLink(c)+' oppure, nell’app, Impostazioni → Account e squadra → codice invito: '+c;
-  if(navigator.share){navigator.share({title:'Invito SCOUTDATA',text:txt}).catch(function(){})}
+  var txt='Ti invito nella squadra '+(t?t.name:'')+' su SpikeData ('+ROLEL[CL.inv.role].toLowerCase()+'). Apri '+invLink(c)+' oppure, nell’app, Impostazioni → Account e squadra → codice invito: '+c;
+  if(navigator.share){navigator.share({title:'Invito SpikeData',text:txt}).catch(function(){})}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CL.msg='Invito copiato: incollalo in WhatsApp o in una mail.';renderCloud()},function(){})}
 }
 
@@ -2683,7 +2683,7 @@ function renderCloud(){
   }
   if(!CL.user){
     var up=CL.mode==='up';
-    h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SCOUTDATA</div><div class="acch">'+(up?'Crea il tuo account':'Accedi')+'</div><div class="note">Salva le partite online e condividile con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div></div>';
+    h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SpikeData</div><div class="acch">'+(up?'Crea il tuo account':'Accedi')+'</div><div class="note">Salva le partite online e condividile con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div></div>';
     if(CLS.pendingInv)h+='<div class="clinv">Hai un invito in una squadra (codice <b>'+esc(CLS.pendingInv)+'</b>). '+(up?'Crea l’account':'Accedi')+' e ti porto dentro.</div>';
     h+='<div class="seg" role="tablist"><button role="tab" data-act="clmode" data-v="in" aria-selected="'+!up+'">Ho già un account</button><button role="tab" data-act="clmode" data-v="up" aria-selected="'+up+'">Sono nuovo</button></div>';
     h+='<label class="fl" for="clEmail">Email</label><input class="fin" id="clEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nome@esempio.it" value="'+esc(CL.email)+'">';

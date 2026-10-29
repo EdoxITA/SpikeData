@@ -1,6 +1,6 @@
 {
-  "name": "SCOUTDATA",
-  "short_name": "SCOUTDATA",
+  "name": "SpikeData",
+  "short_name": "SpikeData",
   "description": "Scout di pallavolo a bordo campo: statistiche per atleta, set e partita.",
   "lang": "it",
   "start_url": "./",
