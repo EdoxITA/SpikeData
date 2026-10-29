@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Scout Volley</title>
+<title>SCOUTDATA</title>
 <meta name="theme-color" content="#1f4fd1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Scout Volley">
+<meta name="apple-mobile-web-app-title" content="SCOUTDATA">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 [hidden]{display:none!important}
@@ -383,6 +383,25 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
 .pwbox{position:relative}.pwbox input{width:100%;padding-right:96px}
 .pweye{position:absolute;right:6px;top:50%;transform:translateY(-50%);height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:600;font-size:14px}
 .pweye[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.accs{z-index:30}
+.accw{text-align:center;margin:4px 0 10px}
+.acclogo{width:64px;height:64px;margin:0 auto 6px;border-radius:18px;background:var(--accent) url(icons/icon-192.png) center/cover}
+.accbrand{font-family:var(--f-disp);font-weight:700;font-size:15px;letter-spacing:.18em;color:var(--accent);margin-bottom:2px}
+.acch{font-family:var(--f-disp);font-weight:700;font-size:28px;margin-bottom:4px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--line);margin:6px 0 12px}
+.seg button{height:42px;border:0;border-radius:10px;background:none;font-weight:600;font-size:15px;color:var(--ink)}
+.seg button[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.fl{display:block;font-weight:600;font-size:14px;margin:10px 0 4px}.fl small{font-weight:400;color:var(--mute)}
+.fin{width:100%;height:52px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:17px}
+.accgo{width:100%;height:54px;margin-top:16px;font-size:18px}
+.accfg{display:block;margin:12px auto 0;border:0;background:none;color:var(--accent);text-decoration:underline;font-weight:600;font-size:15px}
+.accno{width:100%;margin-top:18px}
+.cllive>span:first-child{min-width:0;font-size:13.5px;line-height:1.25}
+.cllive.out{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.cllive .clb{display:flex;gap:6px;align-items:center}
+.cllive button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.cllive button.x{border:0;background:none;color:var(--mute);padding:0 6px;font-size:15px}
+.cllive small{font-weight:500;opacity:.8}
 .chips button.lnk{border:0;background:none;color:var(--accent);text-decoration:underline;padding:0 6px}
 .clcred.one{grid-template-columns:1fr}
 .chips button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -472,7 +491,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
   </section>
 
   <section id="paneSet" class="wrap" hidden>
-    <div class="card" id="cloudCard"><h2>Account e squadra</h2><div id="cloudBox"></div></div>
+    <div class="card" id="cloudCard"><h2>Account e squadra</h2><div class="note" id="accSum"></div><div class="upl"><button class="btn solid" id="accOpenBtn" data-act="clopen">Accedi o crea un account</button></div></div>
     <div class="card" id="instCard" hidden><h2>Installa l’app</h2>
       <div class="note" id="instTxt"></div>
       <div class="upl"><button class="btn solid" id="instBtn" hidden>Installa</button></div>
@@ -519,6 +538,7 @@ tr.srow2{cursor:pointer}tr.srow2[aria-selected="true"] td{background:var(--accen
   </section>
   <div class="save" id="saveState"></div>
   <div class="sheet" id="sheet" hidden></div>
+  <div class="sheet accs" id="accSheet" hidden><div class="sin"><div class="srow"><h1 id="accTitle">Account</h1><button class="btn" data-act="clclose">Chiudi</button></div><div id="cloudBox"></div></div></div>
 </div>
 
 <script>window.addEventListener('error',function(e){try{if(e.message==='Script error.'&&!e.lineno&&!e.filename)return;var d=document.createElement('pre');d.onclick=function(){d.remove()};d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;margin:0;background:#fff3f3;color:#900;padding:10px;font:12px monospace;white-space:pre-wrap;max-height:40vh;overflow:auto';d.textContent='Errore: '+(e.message||e.type)+' riga '+(e.lineno||'?');(document.body||document.documentElement).appendChild(d)}catch(x){}});</script>
@@ -2434,14 +2454,15 @@ function switchTeam(id,opt){
 function cloudInit(){
   var m=/[?&]invito=([A-Za-z0-9]{6,12})/.exec(location.search);
   if(m){CLS.pendingInv=m[1].toUpperCase();clSave();try{history.replaceState(null,'',location.pathname)}catch(e){}}
-  if(/type=recovery/.test(location.hash)){CL.recover=true;ui.tab='set'}
+  if(/type=recovery/.test(location.hash)){CL.recover=true;CL.open=true}
+  if(CLS.pendingInv)CL.open=true;
   if(!cloudOn()){renderCloud();return}
   var mk=window.__SBMOCK?Promise.resolve():(window.supabase?Promise.resolve():loadScript('vendor/supabase.js'));
   mk.then(function(){
     CL.sb=window.__SBMOCK||window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'implicit',storageKey:'scout-volley-auth'}});
-    CL.sb.auth.onAuthStateChange(function(ev,ses){if(ev==='PASSWORD_RECOVERY'){CL.recover=true;CL.msg='';ui.tab='set';setTimeout(render,0)}var u=ses&&ses.user;if((u&&u.id)!==(CL.user&&CL.user.id)){CL.user=u||null;afterAuth()}});
+    CL.sb.auth.onAuthStateChange(function(ev,ses){if(ev==='PASSWORD_RECOVERY'){CL.recover=true;CL.msg='';CL.open=true;setTimeout(render,0)}var u=ses&&ses.user;if((u&&u.id)!==(CL.user&&CL.user.id)){CL.user=u||null;afterAuth()}});
     return CL.sb.auth.getSession();
-  }).then(function(r){CL.ready=true;var u=r&&r.data&&r.data.session&&r.data.session.user;if(u&&!CL.user){CL.user=u;afterAuth()}else renderCloud()},
+  }).then(function(r){CL.ready=true;var u=r&&r.data&&r.data.session&&r.data.session.user;if(!u&&!CLS.welcomed){CLS.welcomed=1;clSave();CL.mode='up';CL.open=true}if(u&&!CL.user){CL.user=u;afterAuth()}else render()},
     function(){CL.ready=true;CL.msg='Non riesco a collegarmi al servizio online. L’app funziona comunque su questo dispositivo.';renderCloud()});
   window.addEventListener('online',function(){if(CL.dirty)upNow();if(CL.team)pullAll();clStatus()});
   window.addEventListener('offline',clStatus);
@@ -2593,7 +2614,7 @@ function credOk(){
   if(pw.length<6){CL.msg='La password deve avere almeno 6 caratteri.';renderCloud();return null}
   CL.email=em;return {email:em,password:pw};
 }
-function gotUser(r){if(r.error)throw r.error;var u=r.data&&(r.data.user&&r.data.session?r.data.user:(r.data.session&&r.data.session.user));
+function gotUser(r){CL.mode='in';if(r.error)throw r.error;var u=r.data&&(r.data.user&&r.data.session?r.data.user:(r.data.session&&r.data.session.user));
   if(!u){CL.msg='Account creato: apri la mail di conferma che ti ha mandato Supabase, poi torna qui e premi Entra.';return}
   if(!CL.user||CL.user.id!==u.id){CL.user=u;CL.msg='';afterAuth()}}
 function forgotPw(){
@@ -2641,8 +2662,8 @@ function makeInvite(role){
 function invLink(c){return location.origin+location.pathname+'?invito='+c}
 function shareInv(){
   var c=CL.inv&&CL.inv.code;if(!c)return;var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
-  var txt='Ti invito nella squadra '+(t?t.name:'')+' su Scout Volley ('+ROLEL[CL.inv.role].toLowerCase()+'). Apri '+invLink(c)+' oppure, nell’app, Impostazioni → Account e squadra → codice invito: '+c;
-  if(navigator.share){navigator.share({title:'Invito Scout Volley',text:txt}).catch(function(){})}
+  var txt='Ti invito nella squadra '+(t?t.name:'')+' su SCOUTDATA ('+ROLEL[CL.inv.role].toLowerCase()+'). Apri '+invLink(c)+' oppure, nell’app, Impostazioni → Account e squadra → codice invito: '+c;
+  if(navigator.share){navigator.share({title:'Invito SCOUTDATA',text:txt}).catch(function(){})}
   else if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){CL.msg='Invito copiato: incollalo in WhatsApp o in una mail.';renderCloud()},function(){})}
 }
 
@@ -2661,10 +2682,16 @@ function renderCloud(){
     el.innerHTML=h;return;
   }
   if(!CL.user){
-    h+='<div class="note">Accedi per salvare le partite online e condividerle con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div>';
-    h+='<div class="clcred"><input id="clEmail" type="email" inputmode="email" autocomplete="email" placeholder="email" value="'+esc(CL.email)+'"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="password (almeno 6 caratteri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
-    h+='<div class="chips"><button class="pri" data-act="clin"'+B+'>Entra</button><button data-act="clup2"'+B+'>Crea account</button><button class="lnk" data-act="clforgot"'+B+'>Password dimenticata?</button></div><div class="note">La prima volta premi <b>Crea account</b>, poi basta <b>Entra</b>.</div>';
-    if(CLS.pendingInv)h+='<div class="note">Hai un invito (codice <b>'+esc(CLS.pendingInv)+'</b>): accedi e ti porto nella squadra.</div>';
+    var up=CL.mode==='up';
+    h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SCOUTDATA</div><div class="acch">'+(up?'Crea il tuo account':'Accedi')+'</div><div class="note">Salva le partite online e condividile con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div></div>';
+    if(CLS.pendingInv)h+='<div class="clinv">Hai un invito in una squadra (codice <b>'+esc(CLS.pendingInv)+'</b>). '+(up?'Crea l’account':'Accedi')+' e ti porto dentro.</div>';
+    h+='<div class="seg" role="tablist"><button role="tab" data-act="clmode" data-v="in" aria-selected="'+!up+'">Ho già un account</button><button role="tab" data-act="clmode" data-v="up" aria-selected="'+up+'">Sono nuovo</button></div>';
+    h+='<label class="fl" for="clEmail">Email</label><input class="fin" id="clEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nome@esempio.it" value="'+esc(CL.email)+'">';
+    h+='<label class="fl" for="clPw">Password'+(up?' <small>(almeno 6 caratteri)</small>':'')+'</label><div class="pwbox"><input class="fin" id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="'+(up?'new-password':'current-password')+'" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="'+(up?'scegli una password':'la tua password')+'"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div>';
+    h+='<button class="btn solid accgo" data-act="'+(up?'clup2':'clin')+'"'+B+'>'+(up?'Crea account':'Entra')+'</button>';
+    if(!up)h+='<button class="lnk accfg" data-act="clforgot"'+B+'>Hai dimenticato la password?</button>';
+    else h+='<div class="note" style="text-align:center;margin-top:8px">Hai già un account? Tocca <b>Ho già un account</b>.</div>';
+    h+='<button class="btn accno" data-act="clclose">Continua senza account</button>';
   }else{
     h+='<div class="srow"><span>Accesso: <b>'+esc(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
     if(CL.join){
@@ -2699,23 +2726,46 @@ function renderCloud(){
   }
   if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
   if(CL.busy)h+='<div class="note">Attendi…</div>';
+  if(!CL.user&&CL.msg){var k=h.lastIndexOf('<div class="note clmsg"'),mm=h.slice(k);h=h.slice(0,k);var q=h.indexOf('<button class="btn solid accgo"');if(q>=0)h=h.slice(0,q)+mm+h.slice(q)}
   var f=document.activeElement&&document.activeElement.id,val=f&&$(f)?$(f).value:null,pw0=$('clPw')?$('clPw').value:'';
   el.innerHTML=h;
   if($('clPw')&&pw0)$('clPw').value=pw0;
   if(f&&$(f)){$(f).value=val;$(f).focus()}
 }
-HOOK.render=function(){if(ui.tab==='set')renderCloud();clStatus();renderLiveBar()};
+function openAcc(){CL.open=true;renderAcc();var b=$('accSheet');if(b)b.scrollTop=0}
+function closeAcc(){CL.open=false;CL.msg='';renderAcc()}
+function renderAcc(){
+  var sh=$('accSheet');if(!sh)return;
+  if(!CL.open||!cloudOn()){sh.hidden=true;return}
+  sh.hidden=false;$('accTitle').textContent=CL.user?'Account e squadra':'Account';renderCloud();
+}
+function renderAccSum(){
+  var el=$('accSum');if(!el)return;
+  if(!cloudOn()){el.textContent='Il salvataggio online non è attivo in questa versione.';return}
+  var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
+  el.innerHTML=CL.user?('Accesso: <b>'+esc(CL.user.email||'')+'</b>'+(t?' · squadra <b>'+esc(t.name)+'</b> ('+ROLEL[t.role].toLowerCase()+')':' · nessuna squadra')):'Non hai fatto l’accesso: le partite restano solo su questo dispositivo.';
+  var bt=$('accOpenBtn');if(bt)bt.textContent=CL.user?'Apri account e squadra':'Accedi o crea un account';
+}
+HOOK.render=function(){renderAcc();renderAccSum();clStatus();renderLiveBar()};
 function renderLiveBar(){
   var el=$('clLive');if(!el)return;
-  var on=CL.team&&CL.user;
-  if(!on){el.hidden=true;return}
+  if(!cloudOn()||!CL.ready){el.hidden=true;return}
+  if(!CL.user){
+    if(CLS.hideBar){el.hidden=true;return}
+    el.hidden=false;el.className='cllive out';
+    el.innerHTML='<span>Salva online e condividi con il coach</span><span class="clb"><button class="pri" data-act="clopen">Accedi</button><button class="x" data-act="clhide" aria-label="Nascondi">✕</button></span>';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
-  el.hidden=false;el.innerHTML='<span>'+(CL.role==='viewer'?'👁 Solo visione · ':'☁ ')+esc(t?t.name:'')+'</span>'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'');
+  el.hidden=false;el.className='cllive';
+  el.innerHTML='<span>'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+esc(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
 }
 HOOK.click=function(b,a){
   if(!a||!/^cl/.test(a))return false;
   if(a==='clpw'){CL.showPw=!CL.showPw;var pi=$('clPw');if(pi){pi.type=CL.showPw?'text':'password';var pos=pi.value.length;pi.focus();try{pi.setSelectionRange(pos,pos)}catch(e){}}
     b.setAttribute('aria-pressed',CL.showPw);b.textContent=CL.showPw?'Nascondi':'Mostra';b.setAttribute('aria-label',CL.showPw?'Nascondi password':'Mostra password');return true}
+  if(a==='clopen'){openAcc();return true}
+  if(a==='clclose'){closeAcc();return true}
+  if(a==='clhide'){CLS.hideBar=1;clSave();renderLiveBar();return true}
+  if(a==='clmode'){CL.mode=b.getAttribute('data-v');CL.msg='';renderCloud();return true}
   if(a==='clin'){signIn();return true}
   if(a==='clforgot'){forgotPw();return true}
   if(a==='clnewpw'){newPw();return true}

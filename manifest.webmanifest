@@ -1,17 +1,17 @@
 {
-  "name": "Scout Volley",
-  "short_name": "Scout Volley",
-  "description": "Scout di pallavolo a bordo campo: statistiche per giocatrice, set e partita.",
+  "name": "SCOUTDATA",
+  "short_name": "SCOUTDATA",
+  "description": "Scout di pallavolo a bordo campo: statistiche per atleta, set e partita.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#15191f",
-  "theme_color": "#15191f",
+  "background_color": "#eceff2",
+  "theme_color": "#1f4fd1",
   "icons": [
     {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
     {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ]
 }

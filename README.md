@@ -1,4 +1,4 @@
-# Scout Volley
+# SCOUTDATA
 
 App di scout pallavolo da usare a bordo campo, su telefono o tablet. Funziona anche senza internet e i dati restano sul tuo dispositivo.
 
