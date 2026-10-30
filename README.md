@@ -1,6 +1,6 @@
 # SpikeData
 
-<p align="center"><img src="icons/logo-full.png" alt="SpikeData" width="320"></p>
+<p align="center"><img src="icons/logo-full.png" alt="SpikeData" width="460"></p>
 
 App di scout pallavolo da usare a bordo campo, su telefono o tablet. Funziona anche senza internet e i dati restano sul tuo dispositivo.
 
