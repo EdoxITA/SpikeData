@@ -272,7 +272,7 @@ function createTeam(){
 function acceptInv(code){
   code=String(code||'').trim().toUpperCase();
   if(!code){CL.msg='Scrivi il codice invito.';renderCloud();return Promise.resolve()}
-  return clBusy(CL.sb.rpc('accept_invite',{p_code:code}).then(function(r){if(r.error)throw r.error;var id=r.data;
+  return clBusy(CL.sb.rpc('accept_invite',{p_code:code}).then(function(r){if(r.error)throw r.error;if(!r.data)throw {message:'Codice invito non valido'};var id=r.data;
     return loadTeams().then(function(){
       var t=CL.teams.filter(function(x){return x.id===id})[0],fromLocal=!CLS.team;
       var mine=fromLocal&&(hasData()||arch.length);
