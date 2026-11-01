@@ -1,0 +1,19 @@
+# SpikeData · Risultati dei test
+
+Ambiente: Chromium headless (Playwright) su Linux, viewport simulati di telefono, tablet e desktop; Postgres 16 locale con lo schema di produzione e un'autenticazione simulata. **Nessuna prova su dispositivi reali** (iPhone, iPad, Android): da fare prima del rilascio.
+
+## Fase B (1 novembre 2026)
+
+| Suite | Cosa verifica | Esito |
+|---|---|---|
+| t8–t20, t23 | Scout, punteggio, rotazioni, formazioni, cambi, falli, zone, alzate, statistiche, stagione, PDF, Excel, time-out, salva partita (telefono e tablet) | tutte superate (42, 36, 107, 40, 30, 24, 40, 26, 24, 76, 28, 22, 36) |
+| t11, tpwa | App installabile: avvio, offline, import CSV/Excel/PDF | 42/42, 22/22 |
+| t21 | Account, squadre, inviti, ruoli, sincronizzazione (backend simulato) | 53/53 |
+| t22 | Dati malevoli dal server | 12/12 |
+| **t24 (nuova)** | Rimedi fase B: avviso salvataggio, PDF con `isEvalSupported:false`, Excel isolato, file > 5 MB, file rotto, cache del service worker, partita eliminata | 14/14 |
+| t24 su versione pubblicata | Controprova: il test sulle partite eliminate **fallisce** sulla versione online (la partita ritorna) e passa sulla nuova | confermato |
+| SQL locale | Permessi per ruolo (28/28), limiti e sicurezza (15/15), correzioni fase B (10/10) | superati |
+| Baseline visiva | 20 schermate prima/dopo confrontate pixel per pixel | nessuna differenza |
+| PDF report | Simboli “−” “•” e parentesi nel PDF generato dall'app installabile | errati prima, corretti dopo |
+
+Una suite (t18) è stata aggiornata nella sessione precedente per l'efficienza che ora può essere negativa.
