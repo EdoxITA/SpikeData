@@ -22,4 +22,4 @@ Regola generale: nessun push, pull request o pubblicazione prima che il propriet
 1. Applicare in produzione l'SQL della fase B (eliminazioni definitive, inviti più sicuri)? È reversibile ma tocca la produzione.
 2. Dominio dedicato per isolare i dati dell'app (rilievo P08)?
 3. Dati per l'informativa privacy (vedi `PRIVACY_OPEN_QUESTIONS.md`).
-4. Prima versione della sincronizzazione: un solo scout attivo per partita e gli altri in sola visione (consigliato) oppure più scout contemporanei?
+4. ~~Sincronizzazione~~ **Deciso (1/11/2026): un solo scout attivo per partita**, gli altri in sola visione; il controllo sarà applicato lato server (fase D).
