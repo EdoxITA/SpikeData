@@ -2,7 +2,7 @@
    Quando pubblichi una nuova versione, cambia CACHE (es. v2) così i telefoni si aggiornano. */
 var CACHE = 'scout-volley-v26';
 var CORE = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "fonts/barlow-condensed-latin-500-normal.woff2", "fonts/barlow-condensed-latin-600-normal.woff2", "fonts/barlow-condensed-latin-700-normal.woff2", "fonts/barlow-latin-400-normal.woff2", "fonts/barlow-latin-500-normal.woff2", "fonts/barlow-latin-600-normal.woff2"];
-var LAZY = ["vendor/supabase.js", "vendor/xlsx.core.min.js", "vendor/pdf.min.js", "vendor/pdf.worker.min.js"];
+var LAZY = ["vendor/supabase.js", "vendor/xlsx.core.min.js", "vendor/pdf.min.js", "vendor/pdf.worker.min.js", "import-worker.js"];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
@@ -14,7 +14,8 @@ self.addEventListener('install', function (e) {
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    /* elimino solo le versioni vecchie di SpikeData: le altre cache dello stesso indirizzo non si toccano */
+    return Promise.all(keys.filter(function (k) { return k !== CACHE && k.indexOf('scout-volley-') === 0; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 

@@ -4,10 +4,10 @@ var LSC='scout-volley-cloud',WS='scout-volley-ws-';
 var CL={sb:null,ready:false,user:null,teams:[],team:null,role:null,members:[],ch:null,step:'email',email:'',msg:'',busy:false,inv:null,
   dirty:false,tUp:null,tAr:null,rosterJson:null,live:null,askUp:null,delArm:null,leaveArm:null};
 var CLS=(function(){try{return JSON.parse(localStorage.getItem(LSC))||{}}catch(e){return {}}})();
-CLS.synced=CLS.synced||{};CLS.rosterAt=CLS.rosterAt||{};CLS.skip=CLS.skip||{};
-function clSave(){try{localStorage.setItem(LSC,JSON.stringify(CLS))}catch(e){}}
+CLS.synced=CLS.synced||{};CLS.rosterAt=CLS.rosterAt||{};CLS.skip=CLS.skip||{};CLS.gone=CLS.gone||{};
+function clSave(){lsWrite(LSC,JSON.stringify(CLS))}
 function cloudOn(){return !!(SB_URL&&SB_KEY)}
-function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function escH(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 var ROLEL={owner:'Proprietario',editor:'Fa lo scout',viewer:'Solo visione'};
 function stBody(){return {savedAt:state.savedAt||0,events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()}}
 function freshState(){return {events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{name:'',opp:'',date:'',home:''},mid:null,updated:0,savedAt:0}}
@@ -33,7 +33,7 @@ function clStatus(){
 
 /* ---- spazi di lavoro: ogni squadra ha la sua partita in corso e il suo archivio su questo dispositivo ---- */
 function wsKey(){return CL.team||'local'}
-function wsStash(k){try{localStorage.setItem(WS+k,JSON.stringify({st:stBody(),arch:arch}))}catch(e){}}
+function wsStash(k){lsWrite(WS+k,JSON.stringify({st:stBody(),arch:arch}))}
 function wsLoad(k,keepRoster){
   var w=null;try{w=JSON.parse(localStorage.getItem(WS+k))}catch(e){}
   var ex=state.extra,ed=state.edits,ro=state.roles;
@@ -114,13 +114,16 @@ function pullAll(){
   var id=CL.team;if(!id)return Promise.resolve();
   return Promise.all([
     CL.sb.from('teams').select('id,name,roster,roster_updated').eq('id',id).single(),
-    CL.sb.from('matches').select('id,data,status,updated').eq('team_id',id).eq('deleted',false)
+    CL.sb.from('matches').select('id,data,status,updated').eq('team_id',id).eq('deleted',false),
+    CL.sb.from('matches').select('id').eq('team_id',id).eq('deleted',true)
   ]).then(function(rs){
     if(CL.team!==id)return;
     var ch=false;
     if(rs[0].data){ch=applyRoster(rs[0].data)||ch;if(CL.rosterJson==null)CL.rosterJson=JSON.stringify(rosterObj())}
     if(rs[1].error){CL.msg=clErr(rs[1].error)}
     var rows=rs[1].data||[];
+    /* partite eliminate da altri: le tolgo anche qui e non le ricarico più (niente "ritorni" da copie vecchie) */
+    ((rs[2]&&rs[2].data)||[]).forEach(function(m){CLS.gone[m.id]=1;ch=mergeRow({id:m.id,deleted:true,data:{}})||ch});
     rows.forEach(function(m){ch=mergeRow(m,true)||ch});
     pickLive(rows);
     if(canWrite()&&CLS.askedUp!==id){
@@ -159,7 +162,7 @@ function startRt(){
   CL.ch=CL.sb.channel('team-'+id)
     .on('postgres_changes',{event:'*',schema:'public',table:'matches',filter:'team_id=eq.'+id},function(p){
       if(CL.team!==id)return;var m=p.new&&p.new.id?p.new:null;if(!m)return;
-      if(m.deleted){mergeRow({id:m.id,deleted:true,data:{}});render();return}
+      if(m.deleted){CLS.gone[m.id]=1;clSave();mergeRow({id:m.id,deleted:true,data:{}});render();return}
       if(m.status==='live'&&m.id!==state.mid&&!arch.some(function(a){return a.id===m.id})){
         if(!hasData()){adopt(m.data);state.mid=m.id;lsSave();CL.live=null;render();return}
         CL.live={id:m.id,opp:(m.data.meta&&m.data.meta.opp)||'',sc:m.data.score||{},updated:m.updated,data:m.data};render();return}
@@ -194,13 +197,13 @@ function upArch(all){
   if(!canWrite()||!navigator.onLine)return;
   var id=CL.team,ids={},jobs=[];
   arch.forEach(function(m){ids[m.id]=1;
-    if(CLS.skip[m.id]||m.id===state.mid)return;
+    if(CLS.skip[m.id]||CLS.gone[m.id]||m.id===state.mid)return;
     if(!all&&CLS.synced[m.id]==null&&CLS.askedUp!==id)return;
     if(CLS.synced[m.id]===(m.saved||0))return;
     var sv=m.saved||Date.now();
     jobs.push(CL.sb.from('matches').upsert({id:m.id,team_id:id,data:m,status:'archived',updated:sv,deleted:false}).then(function(r){if(r.error)throw r.error;CLS.synced[m.id]=sv}))});
   Object.keys(CLS.synced).forEach(function(k){if(!ids[k]&&k!==state.mid&&CL.team){
-    jobs.push(CL.sb.from('matches').update({deleted:true}).eq('id',k).then(function(r){if(r.error)throw r.error;delete CLS.synced[k]}))}});
+    jobs.push(CL.sb.from('matches').update({deleted:true}).eq('id',k).then(function(r){if(r.error)throw r.error;delete CLS.synced[k];CLS.gone[k]=1}))}});
   if(!jobs.length)return;
   Promise.all(jobs).then(function(){clSave();clStatus()},function(e){CL.msg=clErr(e);clSave()});
 }
@@ -299,18 +302,18 @@ function renderCloud(){
   if(!CL.ready){el.innerHTML='<div class="note">Collegamento in corso…</div>';return}
   var B=CL.busy?' disabled':'';
   if(CL.recover&&CL.user){
-    h+='<div class="card clask"><b>Scegli la nuova password</b><div class="note">Account: '+esc(CL.user.email||'')+'</div>';
+    h+='<div class="card clask"><b>Scegli la nuova password</b><div class="note">Account: '+escH(CL.user.email||'')+'</div>';
     h+='<div class="clcred one"><div class="pwbox"><input id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="nuova password (8+ caratteri, lettere e numeri)"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div></div>';
     h+='<div class="chips"><button class="pri" data-act="clnewpw"'+B+'>Salva la nuova password</button></div></div>';
-    if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
+    if(CL.msg)h+='<div class="note clmsg" role="status">'+escH(CL.msg)+'</div>';
     el.innerHTML=h;return;
   }
   if(!CL.user){
     var up=CL.mode==='up';
     h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SpikeData</div><div class="acch">'+(up?'Crea il tuo account':'Accedi')+'</div><div class="note">Salva le partite online e condividile con il coach o con chi vuoi. Senza account l’app funziona lo stesso, solo su questo dispositivo.</div></div>';
-    if(CLS.pendingInv)h+='<div class="clinv">Hai un invito in una squadra (codice <b>'+esc(CLS.pendingInv)+'</b>). '+(up?'Crea l’account':'Accedi')+' e ti porto dentro.</div>';
+    if(CLS.pendingInv)h+='<div class="clinv">Hai un invito in una squadra (codice <b>'+escH(CLS.pendingInv)+'</b>). '+(up?'Crea l’account':'Accedi')+' e ti porto dentro.</div>';
     h+='<div class="seg" role="tablist"><button role="tab" data-act="clmode" data-v="in" aria-selected="'+!up+'">Ho già un account</button><button role="tab" data-act="clmode" data-v="up" aria-selected="'+up+'">Sono nuovo</button></div>';
-    h+='<label class="fl" for="clEmail">Email</label><input class="fin" id="clEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nome@esempio.it" value="'+esc(CL.email)+'">';
+    h+='<label class="fl" for="clEmail">Email</label><input class="fin" id="clEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" placeholder="nome@esempio.it" value="'+escH(CL.email)+'">';
     h+='<label class="fl" for="clPw">Password'+(up?' <small>(almeno 8 caratteri, con lettere e numeri)</small>':'')+'</label><div class="pwbox"><input class="fin" id="clPw" type="'+(CL.showPw?'text':'password')+'" autocomplete="'+(up?'new-password':'current-password')+'" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="'+(up?'scegli una password':'la tua password')+'"><button type="button" class="pweye" data-act="clpw" aria-pressed="'+!!CL.showPw+'" aria-label="'+(CL.showPw?'Nascondi password':'Mostra password')+'">'+(CL.showPw?'Nascondi':'Mostra')+'</button></div>';
     h+='<button class="btn solid accgo" data-act="'+(up?'clup2':'clin')+'"'+B+'>'+(up?'Crea account':'Entra')+'</button>';
     if(!up)h+='<button class="lnk accfg" data-act="clforgot"'+B+'>Hai dimenticato la password?</button>';
@@ -319,16 +322,16 @@ function renderCloud(){
     h+='<div class="note accpriv">'+(up?'Creando l’account accetti l’':'Leggi l’')+'<a href="privacy.html" target="_blank" rel="noopener">informativa privacy</a>.</div>';
   }else{
     h+='<div class="accw"><div class="acclogo" aria-hidden="true"></div><div class="accbrand">SpikeData</div></div>';
-    h+='<div class="srow"><span>Accesso: <b>'+esc(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
+    h+='<div class="srow"><span>Accesso: <b>'+escH(CL.user.email||'')+'</b></span><button class="btn" data-act="clout">Esci</button></div>';
     var tt=CL.teams.filter(function(x){return x.id===CL.team})[0];
-    h+='<div class="note" style="margin-top:8px">'+(tt?'Squadra attiva: <b>'+esc(tt.name)+'</b> ('+ROLEL[tt.role].toLowerCase()+').':'Non sei ancora in una squadra.')+' Inviti, persone e rosa si gestiscono nella scheda <b>Squadra</b>.</div>';
+    h+='<div class="note" style="margin-top:8px">'+(tt?'Squadra attiva: <b>'+escH(tt.name)+'</b> ('+ROLEL[tt.role].toLowerCase()+').':'Non sei ancora in una squadra.')+' Inviti, persone e rosa si gestiscono nella scheda <b>Squadra</b>.</div>';
     h+='<button class="btn solid accgo" data-act="clgoteam">Vai alla squadra</button>';
     var own=CL.teams.filter(function(x){return x.role==='owner'});
-    h+='<details class="accdel"><summary>Elimina account e dati</summary><div class="note">Elimina il tuo account e i tuoi dati online. '+(own.length?'<b>Verranno eliminate per tutti anche le squadre di cui sei proprietario ('+own.map(function(x){return '«'+esc(x.name)+'»'}).join(', ')+'), con rosa e partite.</b> ':'')+'Le partite salvate su questo dispositivo restano finché non le cancelli tu. L’operazione non si può annullare.</div>';
+    h+='<details class="accdel"><summary>Elimina account e dati</summary><div class="note">Elimina il tuo account e i tuoi dati online. '+(own.length?'<b>Verranno eliminate per tutti anche le squadre di cui sei proprietario ('+own.map(function(x){return '«'+escH(x.name)+'»'}).join(', ')+'), con rosa e partite.</b> ':'')+'Le partite salvate su questo dispositivo restano finché non le cancelli tu. L’operazione non si può annullare.</div>';
     h+='<button class="btn danger" data-act="cldelacc"'+B+'>'+(CL.delAcc?'Tocca ancora: elimina definitivamente':'Elimina il mio account')+'</button></details>';
     h+='<div class="note accpriv"><a href="privacy.html" target="_blank" rel="noopener">Informativa privacy</a></div>';
   }
-  if(CL.msg)h+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
+  if(CL.msg)h+='<div class="note clmsg" role="status">'+escH(CL.msg)+'</div>';
   if(CL.busy)h+='<div class="note">Attendi…</div>';
   if(!CL.user&&CL.msg){var k=h.lastIndexOf('<div class="note clmsg"'),mm=h.slice(k);h=h.slice(0,k);var q=h.indexOf('<button class="btn solid accgo"');if(q>=0)h=h.slice(0,q)+mm+h.slice(q)}
   var f=document.activeElement&&document.activeElement.id,val=f&&$(f)?$(f).value:null,pw0=$('clPw')?$('clPw').value:'';
@@ -342,20 +345,20 @@ function renderTeamCloud(){
   el.hidden=false;var B=CL.busy?' disabled':'',t2='<h2>Squadra online</h2>';
   if(!CL.user){t2+='<div class="note">Accedi per condividere la squadra con il coach: rosa, partite in diretta e archivio su ogni dispositivo.</div><div class="upl"><button class="btn solid" data-act="clopen">Accedi o crea un account</button></div>';el.innerHTML=t2;return}
     if(CL.join){
-      t2+='<div class="card clask"><b>Benvenuto in «'+esc(CL.join.name)+'»</b><div class="note">Su questo dispositivo hai già dati (partita in corso o archivio). Vuoi portarli nella squadra?</div><div class="chips"><button data-act="cljoin" data-v="1">Sì, portali nella squadra</button><button data-act="cljoin" data-v="0">No, tienili a parte</button></div></div>';
+      t2+='<div class="card clask"><b>Benvenuto in «'+escH(CL.join.name)+'»</b><div class="note">Su questo dispositivo hai già dati (partita in corso o archivio). Vuoi portarli nella squadra?</div><div class="chips"><button data-act="cljoin" data-v="1">Sì, portali nella squadra</button><button data-act="cljoin" data-v="0">No, tienili a parte</button></div></div>';
     }
     if(CL.teams.length){
       t2+='<div class="note" style="margin-top:6px">Squadra attiva:</div><div class="chips">';
-      CL.teams.forEach(function(t){t2+='<button data-act="clteam" data-id="'+t.id+'" aria-pressed="'+(CL.team===t.id)+'">'+esc(t.name)+' <small>· '+ROLEL[t.role]+'</small></button>'});
+      CL.teams.forEach(function(t){t2+='<button data-act="clteam" data-id="'+t.id+'" aria-pressed="'+(CL.team===t.id)+'">'+escH(t.name)+' <small>· '+ROLEL[t.role]+'</small></button>'});
       t2+='<button data-act="clteam" data-id="" aria-pressed="'+(!CL.team)+'">Nessuna (solo dispositivo)</button></div>';
     }
     if(CL.team){
       var t=CL.teams.filter(function(x){return x.id===CL.team})[0]||{};
-      if(CL.askUp)t2+='<div class="card clask"><b>Partite su questo dispositivo</b><div class="note">Hai '+CL.askUp.n+(CL.askUp.n===1?' partita salvata':' partite salvate')+' solo qui. Le carico nella squadra «'+esc(t.name)+'» così le vede anche il coach?</div><div class="chips"><button data-act="clup" data-v="1">Sì, caricale</button><button data-act="clup" data-v="0">No</button></div></div>';
-      if(CL.live&&canWrite()!==null)t2+='<div class="card clask"><b>Partita in corso nella squadra</b><div class="note">'+(CL.live.opp?'vs '+esc(CL.live.opp)+' · ':'')+'aggiornata alle '+hhmm(CL.live.updated)+'</div><div class="chips"><button data-act="clfollow">Apri e segui in diretta</button></div><div class="note">La partita che hai ora su questo dispositivo finisce in archivio (scheda Stagione).</div></div>';
+      if(CL.askUp)t2+='<div class="card clask"><b>Partite su questo dispositivo</b><div class="note">Hai '+CL.askUp.n+(CL.askUp.n===1?' partita salvata':' partite salvate')+' solo qui. Le carico nella squadra «'+escH(t.name)+'» così le vede anche il coach?</div><div class="chips"><button data-act="clup" data-v="1">Sì, caricale</button><button data-act="clup" data-v="0">No</button></div></div>';
+      if(CL.live&&canWrite()!==null)t2+='<div class="card clask"><b>Partita in corso nella squadra</b><div class="note">'+(CL.live.opp?'vs '+escH(CL.live.opp)+' · ':'')+'aggiornata alle '+hhmm(CL.live.updated)+'</div><div class="chips"><button data-act="clfollow">Apri e segui in diretta</button></div><div class="note">La partita che hai ora su questo dispositivo finisce in archivio (scheda Stagione).</div></div>';
       t2+='<h3 class="clh">Persone nella squadra</h3><div class="cllist">';
       CL.members.forEach(function(m){var me=m.user_id===CL.user.id;
-        t2+='<div class="clm"><span>'+esc(m.email||'—')+(me?' <small class="note">(tu)</small>':'')+'</span>';
+        t2+='<div class="clm"><span>'+escH(m.email||'—')+(me?' <small class="note">(tu)</small>':'')+'</span>';
         if(CL.role==='owner'&&!me&&m.role!=='owner'){
           t2+='<span class="chips"><button data-act="clrole" data-u="'+m.user_id+'" data-r="editor" aria-pressed="'+(m.role==='editor')+'">Fa lo scout</button><button data-act="clrole" data-u="'+m.user_id+'" data-r="viewer" aria-pressed="'+(m.role==='viewer')+'">Solo visione</button><button data-act="clrm" data-u="'+m.user_id+'" class="d">'+(CL.delArm===m.user_id?'Tocca per togliere':'Togli')+'</button></span>';
         }else t2+='<small class="note">'+ROLEL[m.role]+'</small>';
@@ -363,14 +366,14 @@ function renderTeamCloud(){
       t2+='</div>';
       if(CL.role==='owner'){
         t2+='<h3 class="clh">Invita</h3><div class="chips"><button data-act="clinv" data-r="editor"'+B+'>Invita chi fa lo scout</button><button data-act="clinv" data-r="viewer"'+B+'>Invita chi guarda (solo visione)</button></div>';
-        if(CL.inv)t2+='<div class="clinv"><div>Codice invito <b>'+esc(CL.inv.code)+'</b> · '+ROLEL[CL.inv.role].toLowerCase()+' · valido 14 giorni, una persona</div><div class="note" style="word-break:break-all">'+esc(invLink(CL.inv.code))+'</div><div class="chips"><button data-act="clshare">Condividi (WhatsApp, mail…)</button></div></div>';
+        if(CL.inv)t2+='<div class="clinv"><div>Codice invito <b>'+escH(CL.inv.code)+'</b> · '+ROLEL[CL.inv.role].toLowerCase()+' · valido 14 giorni, una persona</div><div class="note" style="word-break:break-all">'+escH(invLink(CL.inv.code))+'</div><div class="chips"><button data-act="clshare">Condividi (WhatsApp, mail…)</button></div></div>';
       }
       t2+='<div class="chips" style="margin-top:10px">'+(CL.role==='owner'?'<button data-act="cldelteam" class="d">'+(CL.leaveArm?'Tocca ancora: elimina la squadra per tutti':'Elimina squadra')+'</button>':'<button data-act="clleave" class="d">'+(CL.leaveArm?'Tocca ancora per uscire':'Esci dalla squadra')+'</button>')+'</div>';
     }else{
       t2+='<h3 class="clh">Crea la tua squadra</h3><div class="clrow"><input id="clTeamName" maxlength="60" placeholder="nome della squadra"><button class="btn solid" data-act="clcreate"'+B+'>Crea</button></div>';
     }
     t2+='<h3 class="clh">Hai un codice invito?</h3><div class="clrow"><input id="clInv" maxlength="12" placeholder="es. 7F3K9Q2A" style="text-transform:uppercase"><button class="btn" data-act="clacc"'+B+'>Entra nella squadra</button></div>';
-  if(CL.msg&&!CL.open)t2+='<div class="note clmsg" role="status">'+esc(CL.msg)+'</div>';
+  if(CL.msg&&!CL.open)t2+='<div class="note clmsg" role="status">'+escH(CL.msg)+'</div>';
   if(CL.busy&&!CL.open)t2+='<div class="note">Attendi…</div>';
   var f=document.activeElement&&document.activeElement.id,val=f&&$(f)?$(f).value:null;
   el.innerHTML=t2;
@@ -387,7 +390,7 @@ function renderAccSum(){
   var el=$('accSum');if(!el)return;
   if(!cloudOn()){el.textContent='Il salvataggio online non è attivo in questa versione.';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
-  el.innerHTML=CL.user?('Accesso: <b>'+esc(CL.user.email||'')+'</b>'+(t?' · squadra <b>'+esc(t.name)+'</b> ('+ROLEL[t.role].toLowerCase()+')':' · nessuna squadra')):'Non hai fatto l’accesso: le partite restano solo su questo dispositivo.';
+  el.innerHTML=CL.user?('Accesso: <b>'+escH(CL.user.email||'')+'</b>'+(t?' · squadra <b>'+escH(t.name)+'</b> ('+ROLEL[t.role].toLowerCase()+')':' · nessuna squadra')):'Non hai fatto l’accesso: le partite restano solo su questo dispositivo.';
   var bt=$('accOpenBtn');if(bt)bt.textContent=CL.user?'Apri account':'Accedi o crea un account';
 }
 HOOK.render=function(){renderAcc();renderAccSum();if(ui.tab==='team')renderTeamCloud();clStatus();renderLiveBar()};
@@ -400,7 +403,7 @@ function renderLiveBar(){
     el.innerHTML='<span>Salva online e condividi con il coach</span><span class="clb"><button class="pri" data-act="clopen">Accedi</button><button class="x" data-act="clhide" aria-label="Nascondi">✕</button></span>';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
   el.hidden=false;el.className='cllive';
-  el.innerHTML='<span class="cltn" data-act="clgoteam" role="button">'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+esc(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
+  el.innerHTML='<span class="cltn" data-act="clgoteam" role="button">'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+escH(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
 }
 HOOK.click=function(b,a){
   if(!a||!/^cl/.test(a))return false;

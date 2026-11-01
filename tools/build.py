@@ -236,7 +236,7 @@ html = html.rstrip() + '\n</body>\n</html>\n'
 # ---- service worker ----
 fonts = sorted(os.listdir(OUT/'fonts'))
 core = ['./','index.html','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'] + (['icons/splash-mark.webp','icons/splash-text.webp','icons/splash-ball.webp'] if os.environ.get('SPLASH')=='1' else []) + ['fonts/'+f for f in fonts]
-lazy = ['vendor/supabase.js','vendor/xlsx.core.min.js','vendor/pdf.min.js','vendor/pdf.worker.min.js']
+lazy = ['vendor/supabase.js','vendor/xlsx.core.min.js','vendor/pdf.min.js','vendor/pdf.worker.min.js','import-worker.js']
 (OUT/'sw.js').write_text('''/* Service worker: tiene l'app disponibile offline.
    Quando pubblichi una nuova versione, cambia CACHE (es. v2) così i telefoni si aggiornano. */
 var CACHE = 'scout-volley-v%s';
@@ -253,7 +253,8 @@ self.addEventListener('install', function (e) {
 
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    /* elimino solo le versioni vecchie di SpikeData: le altre cache dello stesso indirizzo non si toccano */
+    return Promise.all(keys.filter(function (k) { return k !== CACHE && k.indexOf('scout-volley-') === 0; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 
@@ -277,6 +278,9 @@ self.addEventListener('fetch', function (e) {
   }));
 });
 ''' % (VERSION, repr(core).replace("'", '"'), repr(lazy).replace("'", '"')))
+
+# ---- worker per leggere i file Excel ----
+shutil.copy(SP/'import-worker.js', OUT/'import-worker.js')
 
 # ---- informativa privacy ----
 (OUT/'privacy.html').write_text((SP/'privacy.html').read_text())

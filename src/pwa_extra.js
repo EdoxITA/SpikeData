@@ -135,21 +135,23 @@ function readCsvRows(text){
   return rows.filter(function(r){return r.some(function(c){return String(c).trim()})});
 }
 function readXlsxRows(buf){
-  return (window.XLSX?Promise.resolve():loadScript('vendor/xlsx.core.min.js')).then(function(){
-    var wb=XLSX.read(buf,{type:'array'}),rows=[];
-    wb.SheetNames.forEach(function(n){
-      XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''}).forEach(function(r){rows.push(r.map(String))});
-    });
-    return rows;
+  /* lettura isolata in un worker, con tempo massimo */
+  return new Promise(function(ok,ko){
+    var w;try{w=new Worker('import-worker.js')}catch(e){ko(e);return}
+    var t=setTimeout(function(){w.terminate();ko(new Error('timeout'))},15000);
+    w.onmessage=function(e){clearTimeout(t);w.terminate();var d=e.data||{};
+      if(d.ok&&Array.isArray(d.rows))ok(d.rows.map(function(r){return Array.isArray(r)?r.map(function(c){return String(c)}):[]}));else ko(new Error('xlsx'))};
+    w.onerror=function(){clearTimeout(t);w.terminate();ko(new Error('xlsx'))};
+    w.postMessage(buf,[buf]);
   });
 }
 function readPdfRows(buf){
   return (window.pdfjsLib?Promise.resolve():loadScript('vendor/pdf.min.js')).then(function(){
     pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';
-    return pdfjsLib.getDocument({data:buf}).promise;
+    return pdfjsLib.getDocument({data:buf,isEvalSupported:false,disableFontFace:true}).promise; /* isEvalSupported:false = protezione CVE-2024-4367 */
   }).then(function(doc){
     var rows=[],chain=Promise.resolve();
-    for(var p=1;p<=doc.numPages;p++)(function(pn){
+    for(var p=1;p<=Math.min(doc.numPages,20);p++)(function(pn){
       chain=chain.then(function(){return doc.getPage(pn)}).then(function(pg){return pg.getTextContent()}).then(function(tcnt){
         var items=tcnt.items.filter(function(i){return i.str&&i.str.trim()});
         items.sort(function(a,b){return b.transform[5]-a.transform[5]||a.transform[4]-b.transform[4]});
@@ -164,6 +166,7 @@ function readPdfRows(buf){
 function importFile(file){
   var m=$('impMsg');m.textContent='Leggo il file…';$('impPrev').innerHTML='';imp=null;
   var name=(file.name||'').toLowerCase(),isPdf=/\.pdf$/.test(name)||file.type==='application/pdf';
+  if(file.size>5*1024*1024){m.textContent='Il file è troppo grande (massimo 5 MB). Una distinta normale pesa molto meno: controlla di aver scelto il file giusto.';return}
   file.arrayBuffer().then(function(buf){
     if(isPdf)return readPdfRows(buf);
     if(/\.(xlsx|xlsm|xls|ods)$/.test(name))return readXlsxRows(buf);
