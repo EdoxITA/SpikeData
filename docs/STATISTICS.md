@@ -4,6 +4,7 @@
 - **Ace % / Punti %** = `+` ÷ totali; **Err. %** = `−` ÷ totali.
 - **Positività** (ricezione, difesa, alzata, appoggio, muro) = `+` ÷ totali.
 - **Alzata brutta**: esito `•` con segno “brutta”; resta tra le neutre (non cambia la positività) e si conta a parte in “di cui brutte”.
+- **Punti avversari su attacco**: totale e conteggio per zona di partenza (loro numerazione) e per zona in cui la palla cade nel nostro campo; non entrano nelle statistiche delle atlete.
 - **Side-out** = punti vinti quando batte l'avversario ÷ loro battute; **break point** = punti vinti quando battiamo noi ÷ nostre battute.
 - Denominatore zero: la percentuale è mostrata come “–”.
 

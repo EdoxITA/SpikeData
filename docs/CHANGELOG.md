@@ -1,5 +1,8 @@
 # Changelog
 
+## Non pubblicato
+- Nuovo tasto “Punto avversario (attacco)” (modalità avanzata, accanto a “Errore avversario”): punto a loro e scelta delle zone (da dove attaccano e dove cade la palla nel nostro campo). Anche un punto “a loro” messo a mano si può completare come attacco avversario. In Statistiche, PDF ed Excel: totale e conteggio per zona.
+
 ## Versione 29 · 2 novembre 2026
 - Alzata: nuovo esito “Brutta” (conta tra le neutre, nessun punto); in Statistiche colonna “di cui brutte”; si può scegliere anche nella correzione.
 - Palleggio in 1 in ricezione: sul primo attacco dello scambio l’opposto attacca da zona 4 e la banda da zona 2 (zona d’attacco automatica e disegno del campo); dal secondo attacco si torna allo scambio normale.

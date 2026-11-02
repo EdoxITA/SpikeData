@@ -88,6 +88,7 @@ h2{font-family:var(--f-disp);font-weight:600;font-size:15px;letter-spacing:.1em;
 .fund .fch button{white-space:normal;line-height:1.15;overflow-wrap:anywhere}
 .fund button.opp{color:var(--o-hash);border-color:var(--o-hash)}
 .fund button.opp[data-act=opps]{grid-column:1 / -1}
+.fund button.oatk{grid-column:1 / -1}
 .fund button.flt.opp[aria-pressed="true"]{background:var(--o-hash);color:#fff;border-color:var(--o-hash)}
 .fund button.flt[aria-pressed="true"]{background:var(--o-err);color:#fff;border-color:var(--o-err);border-style:solid}
 .fund button.unl{color:var(--mute);border-color:var(--line)}
@@ -532,13 +533,15 @@ function renumber(o,nw){if(o===nw)return;
   if(ui.player===o)ui.player=nw}
 function pl(n){var r=roster();for(var i=0;i<r.length;i++)if(r[i].n===n)return r[i]}
 var FAULT=[{k:'F4',n:'Fallo 4 tocchi',sh:'4 tocchi',team:1,lab:{'-':'Fallo di 4 tocchi'}},{k:'FF',n:'Fallo di formazione',sh:'Formazione',team:1,lab:{'-':'Fallo di formazione (rotazione)'}},{k:'DB',n:'Doppia',lab:{'-':'Fallo di doppia'}},{k:'TR',n:'Trattenuta',lab:{'-':'Fallo di trattenuta'}}];
-function isFault(e){return e.f==='F4'||e.f==='FF'||e.f==='DB'||e.f==='TR'||e.f==='OE'}
+function isFault(e){return e.f==='F4'||e.f==='FF'||e.f==='DB'||e.f==='TR'||e.f==='OE'||e.f==='OA'}
 var OPP=[{k:'B',n:'Battuta sbagliata'},{k:'A',n:'Attacco sbagliato'},{k:'F',n:'Fallo di formazione'},{k:'X',n:'Altro fallo'}];
 var OEF={k:'OE',n:'Errore avversario',lab:{'+':'Errore avversario'}};
+/* punto delle avversarie su attacco: z.a = zona del nostro campo dove cade la palla, z.b = zona da cui attaccano (loro numerazione) */
+var OAF={k:'OA',n:'Punto avversario',team:1,lab:{'-':'Attacco avversario'}};
 var PTF={k:'PT',n:'Punto',lab:{'+':'a noi · da completare','-':'a loro · da completare'}};
 function oppName(x){for(var i=0;i<OPP.length;i++)if(OPP[i].k===x)return OPP[i].n;return 'Errore'}
-function who(e){return e.f==='PT'?'Punto':e.f==='OE'?'Avversario':e.p?e.p+' '+pname(e.p):'Squadra'}
-function fd(k){if(k==='OE')return OEF;if(k==='PT')return PTF;for(var i=0;i<FUND.length;i++)if(FUND[i].k===k)return FUND[i];for(i=0;i<FAULT.length;i++)if(FAULT[i].k===k)return FAULT[i]}
+function who(e){return e.f==='PT'?'Punto':e.f==='OE'||e.f==='OA'?'Avversario':e.p?e.p+' '+pname(e.p):'Squadra'}
+function fd(k){if(k==='OE')return OEF;if(k==='OA')return OAF;if(k==='PT')return PTF;for(var i=0;i<FUND.length;i++)if(FUND[i].k===k)return FUND[i];for(i=0;i<FAULT.length;i++)if(FAULT[i].k===k)return FAULT[i]}
 function sc(set){return state.score[set]||{us:0,them:0}}
 function setOver(set){var s=sc(set),t=set===5?15:25,m=Math.max(s.us,s.them);if(m>=t&&Math.abs(s.us-s.them)>=2)return s.us>s.them?'us':'them';return null}
 function isHere(n){return !(state.absent&&state.absent[n])}
@@ -586,7 +589,7 @@ function int(v,lo,hi){v=parseInt(v,10);return isNaN(v)||v<lo||v>hi?null:v}
 function cleanEv(e){
   if(!e||typeof e!=='object')return null;
   var okF=e.f==='OE'||!!fd(e.f);if(!okF)return null;
-  var r={t:typeof e.t==='number'?e.t:0,set:int(e.set,1,5)||1,p:e.f==='F4'||e.f==='FF'||e.f==='OE'||e.f==='PT'?0:cleanN(e.p),f:e.f,o:e.o};
+  var r={t:typeof e.t==='number'?e.t:0,set:int(e.set,1,5)||1,p:e.f==='F4'||e.f==='FF'||e.f==='OE'||e.f==='OA'||e.f==='PT'?0:cleanN(e.p),f:e.f,o:e.o};
   if(r.p==null)return null;
   ['ri','si'].forEach(function(k){var v=int(e[k],0,999);if(v!=null)r[k]=v});
   if(e.pt==='us'||e.pt==='them')r.pt=e.pt;if(e.ace)r.ace=1;if(e.sp)r.sp=1;
@@ -595,6 +598,7 @@ function cleanEv(e){
   if(e.tg!=null){var tg=cleanN(e.tg);if(tg!=null)r.tg=tg}
   if(e.f==='OE')r.x=({B:1,A:1,F:1,X:1})[e.x]?e.x:'X';
   if(e.f==='PT'){r.o=r.pt==='them'?'-':'+'}
+  if(e.f==='OA')r.o='-';
   if(typeof e.ed==='number')r.ed=e.ed;
   return r}
 function cleanRoster(){
@@ -675,6 +679,16 @@ function addOpp(x){
   ui.flash={t:'✓ Errore avversario · '+oppName(x)+(pt?' · punto a noi':''),c:COL['+']};
   ui.player=null;ui.fund=null;ui.zp=null;ui.oe=false;ui.fl=false;persist();render();
 }
+function addOppAtk(){
+  ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
+  var pt=state.auto?'them':null;
+  if(state.meta&&!state.meta.date)state.meta.date=todayISO();
+  var e={t:Date.now(),set:state.set,p:0,f:'OA',o:'-'};e.ri=ralOf(state.set).length;e.si=opsOf(state.set).length;
+  if(pt&&addScore(state.set,pt,1)){e.pt=pt;state.rally.push({set:state.set,w:pt,si:opsOf(state.set).length})}else pt=null;
+  state.events.push(e);
+  ui.flash={t:'✓ Punto avversario su attacco'+(pt?' · punto a loro':'')+' · scegli le zone qui sotto',c:COL['-']};
+  ui.player=null;ui.fund=null;ui.zp={e:e};ui.oe=false;ui.fl=false;persist();render();
+}
 function undo(){
   ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   var e=state.events.pop();if(!e)return;ui.zp=null;
@@ -684,6 +698,7 @@ function undo(){
 }
 function popRally(set,w){for(var i=state.rally.length-1;i>=0;i--)if(state.rally[i].set===set&&state.rally[i].w===w){state.rally.splice(i,1);return}}
 function bump(side,d){
+  ui.zp=null;
   if(d<0&&bumpDown(side))return;
   var set=state.set,b0=sc(set)[side],k=ralOf(set).length;if(addScore(set,side,d)!==false){var b1=sc(set)[side];
   if(b1>b0){state.rally.push({set:set,w:side,si:opsOf(set).length});
@@ -775,10 +790,17 @@ function tgList(C,sel){
 }
 function renderZone(){
   var el=$('zonePanel'),zp=ui.zp,last=state.events[state.events.length-1];
-  if(!state.adv||!zp||!last||last!==zp.e){ui.zp=null;var was=!el.hidden;el.hidden=true;el.innerHTML='';if(was&&window.innerWidth<=900){try{window.scrollTo({top:0,behavior:'smooth'})}catch(x){window.scrollTo(0,0)}}return}
+  if(!zp||!last||(zp.e.f==='OA'?state.events.indexOf(zp.e)<0:(!state.adv||last!==zp.e))){ui.zp=null;var was=!el.hidden;el.hidden=true;el.innerHTML='';if(was&&window.innerWidth<=900){try{window.scrollTo({top:0,behavior:'smooth'})}catch(x){window.scrollTo(0,0)}}return}
   var e=zp.e,z=e.z||{},serve=e.f==='B',rec=e.f==='R',h='';
-  h+='<div class="zph"><span><b>'+(e.f==='Z'?'Alzata':'Zone')+'</b> · '+e.p+' '+pname(e.p)+' · '+fd(e.f).n+'</span><button class="zskip" data-act="zskip">'+(e.f==='Z'&&e.tg!=null?'Fatto':'Salta')+'</button></div>';
-  if(e.f==='Z'){
+  h+='<div class="zph"><span><b>'+(e.f==='Z'?'Alzata':'Zone')+'</b> · '+(e.f==='OA'?'Avversario':e.p+' '+pname(e.p))+' · '+fd(e.f).n+'</span><button class="zskip" data-act="zskip">'+((e.f==='Z'&&e.tg!=null)||(e.f==='OA'&&(z.a||z.b))?'Fatto':'Salta')+'</button></div>';
+  if(e.f==='OA'){
+    h+='<div class="note">Punto avversario su attacco: tocca da che zona hanno attaccato (loro campo) e dove è caduta la palla (nostro campo).</div><div class="zct">';
+    h+='<div class="zlab">LORO · DA DOVE ATTACCANO</div><div class="zg">';
+    ZTH.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('th',n,z.b)})});
+    h+='</div><div class="znet" title="rete"></div><div class="zg">';
+    ZUS.forEach(function(r,i){if(i===1)h+='<div class="zal" title="linea dei 3 metri"></div>';r.forEach(function(n){h+=zbtn('us',n,z.a)})});
+    h+='</div><div class="zlab">NOI · DOVE CADE LA PALLA</div></div>';
+  }else if(e.f==='Z'){
     var TL=tgList((state.rot&&lu(e.set))?courtAt(e.set):null,e.p);
     h+='<div class="note">A chi ha alzato? (facoltativo)</div><div class="tgs">';
     TL.forEach(function(n){var q=pl(n);h+='<button class="tgb" data-act="tg" data-n="'+n+'" aria-pressed="'+(e.tg===n)+'" aria-label="Alzata a '+n+' '+(q?q.s:'')+'"><span class="tt">'+tagOf(n)+'</span><span class="tn">'+n+'</span><span class="ts">'+(q?q.s:'?')+'</span></button>'});
@@ -812,7 +834,7 @@ function renderZone(){
 }
 function serr(e){return e.f==='B'&&e.o==='-'&&e.er?(e.er==='n'?'in rete':'fuori'):''}
 function aerr(e){return e.f==='A'&&e.o==='-'&&e.er?({m:'murato',n:'a rete',f:'fuori'})[e.er]||'':''}
-function zoneText(e){if(e.f==='Z'&&e.tg!=null)return 'a '+e.tg+' '+pname(e.tg);if(serr(e))return serr(e);if(aerr(e))return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+aerr(e);if(e.sp&&e.f==='A')return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+'sporcato';if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
+function zoneText(e){if(e.f==='OA')return e.z?[e.z.b?'da zona '+e.z.b:'',e.z.a?'caduta in zona '+e.z.a:''].filter(Boolean).join(' · '):'';if(e.f==='Z'&&e.tg!=null)return 'a '+e.tg+' '+pname(e.tg);if(serr(e))return serr(e);if(aerr(e))return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+aerr(e);if(e.sp&&e.f==='A')return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+'sporcato';if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
 function renderFirst(){
   var el=$('firstBar');if(!state.adv){el.hidden=true;el.innerHTML='';return}
   var set=state.set,ex=state.first&&state.first[set],fs=firstOf(set),h;
@@ -866,6 +888,7 @@ function renderScout(){
   if(state.adv){
     h+='<button class="flt" data-act="faults" aria-pressed="'+ui.fl+'" aria-expanded="'+ui.fl+'">Falli</button>';
     if(fb)h+='<button class="flt unl" data-act="unlock">Sblocca tutti</button>';
+    h+='<button class="flt oatk" data-act="oatk">Punto avversario (attacco)</button>';
     h+='<button class="flt opp" data-act="opps" aria-pressed="'+!!ui.oe+'" aria-expanded="'+!!ui.oe+'">Errore avversario</button>';
     if(ui.fl){h+='<div class="fch">';FAULT.forEach(function(f){var ok=f.team||ui.player!=null;
       h+='<button class="flt" data-act="fault" data-k="'+f.k+'"'+(ok?'':' disabled')+'>'+(f.sh||f.n)+'</button>'});h+='</div>'}
@@ -957,7 +980,7 @@ function evHtml(){
   }
   var e=state.events[E.i];if(!e){ui.ev={mode:'list',set:'all'};return evHtml()}
   if(e.f==='PT')return h+ptHtml(e,E)+'</div>';
-  var fixed=e.f==='OE'||FAULT.some(function(f){return f.k===e.f}),teamF=fixed&&(e.f==='OE'||fd(e.f).team);
+  var fixed=e.f==='OE'||e.f==='OA'||FAULT.some(function(f){return f.k===e.f}),teamF=fixed&&(e.f==='OE'||fd(e.f).team);
   h+='<div class="srow"><h1>Correggi azione</h1><button class="btn" data-act="evback">Indietro</button></div>';
   h+='<div class="log" style="margin-top:0">'+evRow(e,E.i).replace('data-act="evedit"','data-act="evnone" tabindex="-1"')+'</div>';
   if(!teamF){
@@ -977,7 +1000,7 @@ function evHtml(){
   if(imp)h+='<div class="evimp'+(imp.lock?' warn':'')+'">'+imp.txt+(imp.lock?'<br>Il set è già chiuso: questa modifica non si può salvare.':'')+'</div>';
   if(E.msg)h+='<div class="evimp warn">'+E.msg+'</div>';
   if(!teamF||!fixed)h+='<button class="btn solid" data-act="evsave" style="height:54px;font-size:18px"'+(imp&&imp.lock?' disabled':'')+'>Salva correzione</button>';
-  if(!fixed&&zok(e.f)&&e.f===E.f)h+='<button class="btn" data-act="evzone">Correggi le zone</button>';
+  if((!fixed&&zok(e.f)&&e.f===E.f)||e.f==='OA')h+='<button class="btn" data-act="evzone">'+(e.f==='OA'&&!zhas(e)?'Aggiungi le zone':'Correggi le zone')+'</button>';
   var dl=e.pt?evImpact(e,null):null;
   h+='<button class="btn danger" data-act="evdel"'+(dl&&dl.lock?' disabled':'')+'>'+(E.arm?'Tocca ancora: elimina l’azione':'Elimina azione')+'</button>';
   if(dl)h+='<div class="note">'+(dl.lock?'Eliminare questa azione cambierebbe il punteggio di un set già chiuso.':'Eliminandola: '+dl.txt+'.')+'</div>';
@@ -998,8 +1021,10 @@ function ptHtml(e,E){
     OPP.forEach(function(o){h+='<button data-act="evx" data-v="'+o.k+'" aria-pressed="'+(E.kind==='oe'&&E.x===o.k)+'">'+o.n+'</button>'});h+='</div></div>'}
   else{h+='<div class="card"><h2>Oppure un nostro fallo</h2><div class="chips" role="group" aria-label="Fallo">';
     FAULT.forEach(function(f){h+='<button data-act="evk" data-v="'+f.k+'" aria-pressed="'+(E.kind==='flt'&&E.k===f.k)+'">'+f.n+'</button>'});h+='</div>'+
-    (E.kind==='flt'&&!fd(E.k).team?'<div class="note">Scegli anche l’atleta qui sopra.</div>':'')+'</div>'}
-  var ne=ptNew(e,E),imp=ne&&ne.f!=='OE'&&!FAULT.some(function(f){return f.k===ne.f})?evImpact(e,ne):null;
+    (E.kind==='flt'&&!fd(E.k).team?'<div class="note">Scegli anche l’atleta qui sopra.</div>':'')+'</div>';
+    h+='<div class="card"><h2>Oppure punto delle avversarie</h2><div class="chips" role="group" aria-label="Punto avversario"><button data-act="evoa" aria-pressed="'+(E.kind==='oa')+'">Attacco avversario</button></div>'+
+    (E.kind==='oa'?'<div class="note">Dopo il salvataggio scegli le zone.</div>':'')+'</div>'}
+  var ne=ptNew(e,E),imp=ne&&ne.f!=='OE'&&ne.f!=='OA'&&!FAULT.some(function(f){return f.k===ne.f})?evImpact(e,ne):null;
   if(imp)h+='<div class="evimp'+(imp.lock?' warn':'')+'">'+imp.txt+(imp.lock?'<br>Il set è già chiuso: questa scelta cambierebbe il punteggio.':'<br>Attenzione: con questo esito il punto andrebbe all’altra squadra.')+'</div>';
   if(E.msg)h+='<div class="evimp warn">'+E.msg+'</div>';
   h+='<button class="btn solid" data-act="evsave" style="height:54px;font-size:18px"'+(!ne||imp&&imp.lock?' disabled':'')+'>Salva</button>';
@@ -1010,12 +1035,13 @@ function ptHtml(e,E){
 function ptNew(e,E){
   if(E.kind==='act'&&E.p!=null&&E.f&&E.o)return {p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp};
   if(E.kind==='oe'&&E.x)return {p:0,f:'OE',o:'+',x:E.x};
+  if(E.kind==='oa')return {p:0,f:'OA',o:'-'};
   if(E.kind==='flt'&&E.k){var t=fd(E.k).team;if(!t&&E.p==null)return null;return {p:t?0:E.p,f:E.k,o:'-'}}
   return null;
 }
 function ptApply(i,E){
   var e=state.events[i],ne=ptNew(e,E);if(!ne)return 'Scegli com’è stato fatto il punto.';
-  if(ne.f==='OE'||FAULT.some(function(f){return f.k===ne.f})){
+  if(ne.f==='OE'||ne.f==='OA'||FAULT.some(function(f){return f.k===ne.f})){
     var w=ne.f==='OE'?'us':'them';if(w!==e.pt&&evPtLocked(e))return 'Il set è già chiuso: non posso spostare il punto.';
     evSnap();if(!evRePoint(i,e,w)){ui.evUndo.pop();return 'Non riesco a collegare il punto alla sequenza del set.'}
     e.p=ne.p;e.f=ne.f;e.o=ne.o;if(ne.x)e.x=ne.x;e.ed=Date.now();return ''}
@@ -1034,16 +1060,19 @@ function evClick(a,b){
   if(a==='evback'){ui.ev=E.back!=null?{mode:'list',set:E.back}:null;render();return true}
   if(a==='evp'){E.p=+b.getAttribute('data-n');if(E.kind!=='flt')E.kind='act';E.msg='';E.arm=false;render();return true}
   if(a==='evx'){E.kind='oe';E.x=b.getAttribute('data-v');E.msg='';render();return true}
+  if(a==='evoa'){E.kind='oa';E.msg='';render();return true}
   if(a==='evk'){E.kind='flt';E.k=b.getAttribute('data-v');E.msg='';render();return true}
   if(a==='evf'){if(E.kind!==undefined)E.kind='act';E.f=b.getAttribute('data-k');if(!two(E.f))E.ace=false;if(!fd(E.f).dirty)E.sp=false;E.msg='';E.arm=false;render();return true}
   if(a==='evo'){var v2=b.getAttribute('data-v');E.ace=v2==='ace';E.sp=v2==='sp';E.o=v2==='ace'?'-':v2==='sp'?'.':v2;E.msg='';E.arm=false;render();return true}
   if(a==='evsave'||a==='evdel'){
     if(a==='evdel'&&!E.arm){E.arm=true;render();return true}
-    var e2=state.events[E.i],fixed=e2.f==='OE'||FAULT.some(function(f){return f.k===e2.f});
+    var e2=state.events[E.i],fixed=e2.f==='OE'||e2.f==='OA'||FAULT.some(function(f){return f.k===e2.f});
     var ne=a==='evdel'?null:fixed?{p:(e2.f==='OE'||fd(e2.f).team)?e2.p:E.p,f:e2.f,o:e2.o}:{p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp};
     var err=(a==='evsave'&&e2.f==='PT')?ptApply(E.i,E):evApply(E.i,ne);if(err){E.msg=err;E.arm=false;render();return true}
     ui.flash={t:a==='evdel'?'✓ Azione eliminata':'✓ Azione corretta',c:'var(--mute)'};
-    ui.ev=E.back!=null?{mode:'list',set:E.back}:null;persist();render();return true}
+    ui.ev=E.back!=null?{mode:'list',set:E.back}:null;
+    if(a==='evsave'&&e2.f==='OA'&&!zhas(e2)){ui.ev=null;ui.tab='scout';ui.zp={e:e2};ui.flash={t:'✓ Punto avversario su attacco · scegli le zone qui sotto',c:COL['-']}}
+    persist();render();return true}
   if(a==='evzone'){var e3=state.events[E.i];ui.ev=null;ui.tab='scout';ui.zp={e:e3};e3.ed=Date.now();render();return true}
   if(a==='evnone')return true;
   return false;
@@ -1750,6 +1779,7 @@ function buildXlsx(){
   var R=faultCnt(state.events);
   info.push([],['Falli: 4 tocchi',R.f4],['Falli: formazione',R.ff],['Falli totali',R.tot],['Errori avversari (punti regalati)',R.ot]);
   OPP.forEach(function(o){info.push(['  '+o.n,R.opp[o.k]||0])});
+  info.push(['Punti avversari su attacco',R.oa]);[1,2,3,4,5,6].forEach(function(k){if(R.oaB[k])info.push(['  da zona '+k+' (loro)',R.oaB[k]])});[1,2,3,4,5,6].forEach(function(k){if(R.oaA[k])info.push(['  caduti in zona '+k+' (noi)',R.oaA[k]])});
   add('Riepilogo',info,[34,14,10]);
   add('Atleti partita',xPlayers(state.events),[5,16,12,14]);
   sets.forEach(function(i){var l=state.events.filter(function(e){return e.set===i});if(l.length)add('Set '+i,xPlayers(l),[5,16,12,14])});
@@ -2169,16 +2199,22 @@ function subList(setF){
 }
 function hhmm(t){if(!t)return '–';var d=new Date(t);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
 function subRow(o){var a=pl(o.o),b=pl(o.i);return {set:o.set,sc:o.sc||'–',out:o.o+' '+(a?a.s:'?'),inn:o.i+' '+(b?b.s:'?'),time:hhmm(o.t)}}
+/* riepilogo dei punti avversari su attacco, per zona */
+function oaTxt(R,sep,b0,b1){if(!R.oa)return '';var z=[1,2,3,4,5,6],t='Totale: '+b0+R.oa+b1,
+  fa=z.filter(function(k){return R.oaB[k]}).map(function(k){return 'zona '+k+': '+b0+R.oaB[k]+b1}),
+  fb=z.filter(function(k){return R.oaA[k]}).map(function(k){return 'zona '+k+': '+b0+R.oaA[k]+b1});
+  if(fa.length)t+=sep+'Da dove attaccano: '+fa.join(', ');if(fb.length)t+=sep+'Dove cade da noi: '+fb.join(', ');return t}
 function faultCnt(list){
-  var r={per:{},f4:0,ff:0,tot:0,opp:{B:0,A:0,F:0,X:0},ot:0};
-  list.forEach(function(e){if(e.f==='OE'){r.ot++;r.opp[e.x]=(r.opp[e.x]||0)+1;return}if(!isFault(e))return;r.tot++;if(e.f==='F4')r.f4++;else if(e.f==='FF')r.ff++;else{var c=r.per[e.p]||(r.per[e.p]={DB:0,TR:0});c[e.f]++}});
+  var r={per:{},f4:0,ff:0,tot:0,opp:{B:0,A:0,F:0,X:0},ot:0,oa:0,oaA:{},oaB:{}};
+  list.forEach(function(e){if(e.f==='OA'){r.oa++;if(e.z&&e.z.a)r.oaA[e.z.a]=(r.oaA[e.z.a]||0)+1;if(e.z&&e.z.b)r.oaB[e.z.b]=(r.oaB[e.z.b]||0)+1;return}if(e.f==='OE'){r.ot++;r.opp[e.x]=(r.opp[e.x]||0)+1;return}if(!isFault(e))return;r.tot++;if(e.f==='F4')r.f4++;else if(e.f==='FF')r.ff++;else{var c=r.per[e.p]||(r.per[e.p]={DB:0,TR:0});c[e.f]++}});
   return r;
 }
 function renderFaults(){
   var el=$('fltStat'),R=faultCnt(filtered());
-  if(!R.tot&&!R.ot){el.hidden=true;el.innerHTML='';return}
-  var oh=R.ot?'<h3>Errori avversari (punti regalati)</h3><div class="zsum">'+OPP.map(function(o){return o.n+': <b>'+(R.opp[o.k]||0)+'</b>'}).join(' · ')+' · Totale: <b>'+R.ot+'</b></div>':'';
-  if(!R.tot){el.innerHTML='<h2>Falli</h2>'+oh;el.hidden=false;return}
+  if(!R.tot&&!R.ot&&!R.oa){el.hidden=true;el.innerHTML='';return}
+  var oh=oaTxt(R,' · ','<b>','</b>');oh=oh?'<h3>Punti avversari su attacco</h3><div class="zsum">'+oh+'</div>':'';
+  oh+=R.ot?'<h3>Errori avversari (punti regalati)</h3><div class="zsum">'+OPP.map(function(o){return o.n+': <b>'+(R.opp[o.k]||0)+'</b>'}).join(' · ')+' · Totale: <b>'+R.ot+'</b></div>':'';
+  if(!R.tot){el.innerHTML='<h2>'+(R.oa?'Avversarie':'Falli')+'</h2>'+oh;el.hidden=false;return}
   var h='<h2>Falli</h2><div class="tw"><table><thead><tr><th>Atleta</th><th>Doppia</th><th>Trattenuta</th><th>Tot</th></tr></thead><tbody>',d=0,t=0;
   roster().forEach(function(p){var c=R.per[p.n];if(!c)return;d+=c.DB;t+=c.TR;
     h+='<tr><td><b>'+p.n+'</b> '+p.s+'</td><td class="'+(c.DB?'':'zero')+'">'+c.DB+'</td><td class="'+(c.TR?'':'zero')+'">'+c.TR+'</td><td class="num">'+(c.DB+c.TR)+'</td></tr>'});
@@ -2195,13 +2231,14 @@ function renderSubStats(){
   el.innerHTML=h+'</tbody></table></div><div class="note" style="margin-top:6px">Punteggio = noi–loro al momento del cambio.</div>';el.hidden=false;
 }
 function pdfFaults(P,st){
-  var R=faultCnt(state.events);if(!R.tot&&!R.ot)return;
+  var R=faultCnt(state.events);if(!R.tot&&!R.ot&&!R.oa)return;
   heading(P,st,'Falli');
   var rows=[],d=0,t=0;
   roster().forEach(function(p){var c=R.per[p.n];if(!c)return;d+=c.DB;t+=c.TR;rows.push([{t:p.n+' '+p.s,b:1},String(c.DB),String(c.TR),{t:String(c.DB+c.TR),b:1}])});
   if(rows.length){rows.push([{t:'Squadra',b:1},{t:String(d),b:1},{t:String(t),b:1},{t:String(d+t),b:1}]);
     table(P,st,[{t:'Atleta',w:190,al:'l'},{t:'Doppia',w:70},{t:'Trattenuta',w:80},{t:'Tot',w:60}],rows)}
   P.text(PM,st.y,'Fallo di 4 tocchi (squadra): '+R.f4+'  \u00b7  Fallo di formazione: '+R.ff+'  \u00b7  Falli totali: '+R.tot,8.5,true,INKC);st.y+=18;
+  if(R.oa){P.text(PM,st.y,'Punti avversari su attacco: '+oaTxt(R,'  \u00b7  ','',''),8.5,true,OC['-']);st.y+=18}
   if(R.ot){P.text(PM,st.y,'Errori avversari (punti regalati): '+OPP.map(function(o){return o.n+' '+(R.opp[o.k]||0)}).join('  \u00b7  ')+'  \u00b7  Totale '+R.ot,8.5,true,OC['+']);st.y+=18}
 }
 function pdfSubs(P,st){
@@ -2273,6 +2310,7 @@ document.addEventListener('click',function(ev){
     persist();render();return}
   if(a==='zone'){var ze2=ui.zp&&ui.zp.e;if(!ze2)return;var zs=b.getAttribute('data-s'),zn=+b.getAttribute('data-z');ze2.z=ze2.z||{a:null,b:null};
     if(zs==='us')ze2.z.a=ze2.z.a===zn?null:zn;else ze2.z.b=ze2.z.b===zn?null:zn;
+    if(ze2.f==='OA'){if(ze2.z.a&&ze2.z.b){ui.flash={t:'✓ Punto avversario: '+zoneText(ze2),c:ocol(ze2)};ui.zp=null}persist();render();return}
     if(ze2.f==='A'&&ze2.sp){if(ze2.z.a){ui.flash={t:'✓ Attacco sporcato da zona '+ze2.z.a+' · '+ze2.p+' '+pname(ze2.p),c:ocol(ze2)};ui.zp=null}persist();render();return}
     if(ze2.f==='A'&&ze2.o==='-'){if(ze2.z.a&&ze2.er){ui.flash={t:'✓ Attacco sbagliato: '+aerr(ze2)+' da zona '+ze2.z.a+' · '+ze2.p+' '+pname(ze2.p),c:ocol(ze2)};ui.zp=null}persist();render();return}
     if((ze2.f==='B'&&ze2.z.b)||(ze2.f!=='B'&&ze2.z.a&&ze2.z.b)||(ze2.f==='R'&&ze2.z.a)){ui.flash={t:(ze2.f==='R'?'✓ Ricezione in zona '+ze2.z.a:ze2.f==='B'?'✓ Battuta in zona '+ze2.z.b:'✓ Zone '+ze2.z.a+' → '+ze2.z.b)+' · '+ze2.p+' '+pname(ze2.p)+' · '+fd(ze2.f).n,c:ocol(ze2)};ui.zp=null}
@@ -2297,6 +2335,7 @@ document.addEventListener('click',function(ev){
   if(a==='faults'){ui.fl=!ui.fl;if(ui.fl)ui.oe=false;render();return}
   if(a==='opps'){ui.oe=!ui.oe;if(ui.oe)ui.fl=false;render();return}
   if(a==='opp'){addOpp(b.getAttribute('data-k'));return}
+  if(a==='oatk'){addOppAtk();return}
   if(a==='unlock'){ui.allF=state.set+':'+ralOf(state.set).length;render();return}
   if(a==='fund'){ui.zp=null;var k=b.getAttribute('data-k');ui.fund=(ui.fund===k&&!((PHS==='rec'&&k==='R')||(PHS==='srv0'&&k==='B')))?null:k;render();return}
   if(a==='out'){addEvent(b.getAttribute('data-o'),b.getAttribute('data-ace')==='1',b.getAttribute('data-sp')==='1');return}
