@@ -1152,7 +1152,11 @@ function renderZoneDet(list){
     if(!any){any=true;h+=lg}
     var T=D.tot;
     h+='<h3>'+(serve?'Zone in cui batti di più':rec?'Dove arriva la battuta':(w==='a'?'Da dove attacca':'Dove cade l’attacco'))+'</h3>';
-    h+='<div class="zsum"><b>'+T.n+'</b> '+U+' con zona: <b style="color:var(--o-hash)">'+T.p+'</b> '+PW_+' ('+Math.round(T.p/T.n*100)+'%), <b style="color:#b98700">'+T.d+'</b> '+(rec?'neutre':'normali')+', '+(rec?'<b style="color:var(--o-minus)">'+T.b+'</b> brutte, <b style="color:var(--o-err)">'+T.e+'</b> ace subiti':'<b style="color:var(--o-err)">'+T.e+'</b> errori')+'</div>';
+    /* gli errori in rete, fuori o murati non hanno zona di arrivo: li indico a parte, così i conti tornano con il riepilogo sopra */
+    var NZ=null;if(!rec&&w==='b'){var ez=src.filter(function(e){return e.f===fk&&e.o==='-'&&!(e.z&&e.z.b)});if(ez.length)NZ=serve?serveErr(ez):attErr(ez)}
+    var nzt='';if(NZ){var bits=serve?[[NZ.n,'in rete'],[NZ.f,'fuori']]:[[NZ.m,'murati'],[NZ.n,'a rete'],[NZ.f,'fuori']];if(NZ.x)bits.push([NZ.x,'non indicati']);
+      nzt='<br><b style="color:var(--o-err)">'+NZ.tot+'</b> '+(NZ.tot===1?'errore':'errori')+' senza zona di arrivo: '+bits.filter(function(q){return q[0]}).map(function(q){return '<b>'+q[0]+'</b> '+q[1]}).join(' · ')}
+    h+='<div class="zsum"><b>'+T.n+'</b> '+U+' con zona'+(!rec&&w==='b'?' di arrivo':'')+': <b style="color:var(--o-hash)">'+T.p+'</b> '+PW_+' ('+Math.round(T.p/T.n*100)+'%), <b style="color:#b98700">'+T.d+'</b> '+(rec?'neutre':'normali')+(rec?', <b style="color:var(--o-minus)">'+T.b+'</b> brutte, <b style="color:var(--o-err)">'+T.e+'</b> ace subiti':(T.e||!NZ?', <b style="color:var(--o-err)">'+T.e+'</b> errori':''))+nzt+'</div>';
     h+='<div class="tw"><table><thead><tr><th>Zona</th><th>'+(U.charAt(0).toUpperCase()+U.slice(1))+'</th><th>Esiti</th><th>'+PC+'</th></tr></thead><tbody>';
     D.rows.forEach(function(r,i){
       h+='<tr><td><b>'+zlbl(fk,w,r.z)+'</b>'+(i===0?'<span class="zrank">'+(rec?'più colpita':'più usata')+'</span>':'')+'</td><td class="tt">'+r.n+'</td><td><div class="sb">'+
