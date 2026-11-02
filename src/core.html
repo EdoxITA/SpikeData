@@ -535,9 +535,10 @@ var FAULT=[{k:'F4',n:'Fallo 4 tocchi',sh:'4 tocchi',team:1,lab:{'-':'Fallo di 4 
 function isFault(e){return e.f==='F4'||e.f==='FF'||e.f==='DB'||e.f==='TR'||e.f==='OE'}
 var OPP=[{k:'B',n:'Battuta sbagliata'},{k:'A',n:'Attacco sbagliato'},{k:'F',n:'Fallo di formazione'},{k:'X',n:'Altro fallo'}];
 var OEF={k:'OE',n:'Errore avversario',lab:{'+':'Errore avversario'}};
+var PTF={k:'PT',n:'Punto',lab:{'+':'a noi · da completare','-':'a loro · da completare'}};
 function oppName(x){for(var i=0;i<OPP.length;i++)if(OPP[i].k===x)return OPP[i].n;return 'Errore'}
-function who(e){return e.f==='OE'?'Avversario':e.p?e.p+' '+pname(e.p):'Squadra'}
-function fd(k){if(k==='OE')return OEF;for(var i=0;i<FUND.length;i++)if(FUND[i].k===k)return FUND[i];for(i=0;i<FAULT.length;i++)if(FAULT[i].k===k)return FAULT[i]}
+function who(e){return e.f==='PT'?'Punto':e.f==='OE'?'Avversario':e.p?e.p+' '+pname(e.p):'Squadra'}
+function fd(k){if(k==='OE')return OEF;if(k==='PT')return PTF;for(var i=0;i<FUND.length;i++)if(FUND[i].k===k)return FUND[i];for(i=0;i<FAULT.length;i++)if(FAULT[i].k===k)return FAULT[i]}
 function sc(set){return state.score[set]||{us:0,them:0}}
 function setOver(set){var s=sc(set),t=set===5?15:25,m=Math.max(s.us,s.them);if(m>=t&&Math.abs(s.us-s.them)>=2)return s.us>s.them?'us':'them';return null}
 function isHere(n){return !(state.absent&&state.absent[n])}
@@ -585,7 +586,7 @@ function int(v,lo,hi){v=parseInt(v,10);return isNaN(v)||v<lo||v>hi?null:v}
 function cleanEv(e){
   if(!e||typeof e!=='object')return null;
   var okF=e.f==='OE'||!!fd(e.f);if(!okF)return null;
-  var r={t:typeof e.t==='number'?e.t:0,set:int(e.set,1,5)||1,p:e.f==='F4'||e.f==='FF'||e.f==='OE'?0:cleanN(e.p),f:e.f,o:e.o};
+  var r={t:typeof e.t==='number'?e.t:0,set:int(e.set,1,5)||1,p:e.f==='F4'||e.f==='FF'||e.f==='OE'||e.f==='PT'?0:cleanN(e.p),f:e.f,o:e.o};
   if(r.p==null)return null;
   ['ri','si'].forEach(function(k){var v=int(e[k],0,999);if(v!=null)r[k]=v});
   if(e.pt==='us'||e.pt==='them')r.pt=e.pt;if(e.ace)r.ace=1;if(e.sp)r.sp=1;
@@ -593,6 +594,8 @@ function cleanEv(e){
   if(e.er==='n'||e.er==='f'||e.er==='m')r.er=e.er;
   if(e.tg!=null){var tg=cleanN(e.tg);if(tg!=null)r.tg=tg}
   if(e.f==='OE')r.x=({B:1,A:1,F:1,X:1})[e.x]?e.x:'X';
+  if(e.f==='PT'){r.o=r.pt==='them'?'-':'+'}
+  if(typeof e.ed==='number')r.ed=e.ed;
   return r}
 function cleanRoster(){
   var seen={},ex=[];(Array.isArray(state.extra)?state.extra:[]).forEach(function(x){if(!x)return;var n=cleanN(x.n);if(n==null||seen[n])return;seen[n]=1;
@@ -680,8 +683,26 @@ function undo(){
   persist();render();
 }
 function popRally(set,w){for(var i=state.rally.length-1;i>=0;i--)if(state.rally[i].set===set&&state.rally[i].w===w){state.rally.splice(i,1);return}}
-function bump(side,d){var b0=sc(state.set)[side];if(addScore(state.set,side,d)!==false){var b1=sc(state.set)[side];
-  if(b1>b0)state.rally.push({set:state.set,w:side,si:opsOf(state.set).length});else if(b1<b0)popRally(state.set,side);persist();render()}}
+function bump(side,d){
+  if(d<0&&bumpDown(side))return;
+  var set=state.set,b0=sc(set)[side],k=ralOf(set).length;if(addScore(set,side,d)!==false){var b1=sc(set)[side];
+  if(b1>b0){state.rally.push({set:set,w:side,si:opsOf(set).length});
+    /* il punto messo a mano compare tra le azioni: dopo (anche rivedendo il video) si può dire com'è stato fatto */
+    if(state.meta&&!state.meta.date)state.meta.date=todayISO();
+    state.events.push({t:Date.now(),set:set,p:0,f:'PT',o:side==='us'?'+':'-',pt:side,ri:k,si:opsOf(set).length});
+    ui.flash={t:'✓ Punto '+(side==='us'?'a noi':'a loro')+' · tocca l’azione in basso per dire com’è stato fatto',c:COL[side==='us'?'+':'-']}}
+  else if(b1<b0)popRally(set,side);persist();render()}}
+/* togliere un punto con il meno: se il punto era legato a un'azione, la sistema invece di lasciare dati incoerenti */
+function bumpDown(side){
+  var set=state.set,rs=ralOf(set),k=-1;for(var j=rs.length-1;j>=0;j--)if(rs[j].w===side){k=j;break}
+  if(k<0)return false;
+  for(var i=state.events.length-1;i>=0;i--){var e=state.events[i];
+    if(e.set===set&&e.pt===side&&e.ri===k){
+      if(e.f==='PT'){if(evApply(i,null))return false;ui.flash={t:'↶ Tolto il punto '+(side==='us'?'a noi':'a loro'),c:'var(--mute)'}}
+      else{evSnap();if(!evRePoint(i,e,null)){ui.evUndo.pop();return false}ui.flash={t:'↶ Tolto il punto: '+who(e)+' · '+fd(e.f).n+' resta tra le azioni senza punto',c:'var(--mute)'}}
+      persist();render();return true}}
+  return false;
+}
 function firstOf(set){var f=state.first&&state.first[set];if(f)return f;var o={us:'them',them:'us'};
   if(set===2&&state.first&&state.first[1])return o[state.first[1]];if(set===4&&state.first&&state.first[3])return o[state.first[3]];return null}
 function rallyInfo(set){
@@ -874,8 +895,10 @@ function renderScout(){
    Quelle che lo cambiano aggiornano punteggio, sequenza dei punti (quindi servizio e rotazioni) e posizioni delle azioni successive.
    In un set già chiuso, o se un set successivo è già iniziato, il punteggio non si tocca: si può correggere solo il resto. */
 function evRow(e,i){
+  var w=e.f==='PT'?'<b>Punto '+(e.pt==='them'?'a loro':'a noi')+'</b> <small>· da completare: tocca per dire com’è stato fatto</small>':
+    '<b>'+who(e)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zoneText(e)?' · '+zoneText(e):'')+'</small>';
   return '<button class="row'+(e.ed?' ed':'')+'" data-act="evedit" data-i="'+i+'"><span class="badge" style="background:'+ocol(e)+'">'+osym(e)+'</span>'+
-    '<span class="what"><b>'+who(e)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zoneText(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></button>';
+    '<span class="what">'+w+'</span><small class="note">Set '+e.set+'</small></button>';
 }
 function rallyIdx(set,k){var c=-1;for(var i=0;i<state.rally.length;i++)if(state.rally[i].set===set){c++;if(c===k)return i}return -1}
 function scoreAdd(set,side,d){var s=JSON.parse(JSON.stringify(sc(set)));s[side]=Math.max(0,s[side]+d);state.score[set]=s}
@@ -928,6 +951,7 @@ function evHtml(){
     return h+'</div>';
   }
   var e=state.events[E.i];if(!e){ui.ev={mode:'list',set:'all'};return evHtml()}
+  if(e.f==='PT')return h+ptHtml(e,E)+'</div>';
   var fixed=e.f==='OE'||FAULT.some(function(f){return f.k===e.f}),teamF=fixed&&(e.f==='OE'||fd(e.f).team);
   h+='<div class="srow"><h1>Correggi azione</h1><button class="btn" data-act="evback">Indietro</button></div>';
   h+='<div class="log" style="margin-top:0">'+evRow(e,E.i).replace('data-act="evedit"','data-act="evnone" tabindex="-1"')+'</div>';
@@ -954,6 +978,44 @@ function evHtml(){
   if(dl)h+='<div class="note">'+(dl.lock?'Eliminare questa azione cambierebbe il punteggio di un set già chiuso.':'Eliminandola: '+dl.txt+'.')+'</div>';
   return h+'</div>';
 }
+function ptHtml(e,E){
+  var us=e.pt!=='them',h='<div class="srow"><h1>Com’è stato fatto il punto?</h1><button class="btn" data-act="evback">Indietro</button></div>';
+  h+='<div class="log" style="margin-top:0">'+evRow(e,E.i).replace('data-act="evedit"','data-act="evnone" tabindex="-1"')+'</div>';
+  h+='<div class="card"><h2>Azione nostra</h2><div class="chips" role="group" aria-label="Atleta">';
+  roster().forEach(function(p){h+='<button data-act="evp" data-n="'+p.n+'" aria-pressed="'+(E.kind==='act'&&E.p===p.n)+'">'+p.n+' '+p.s+'</button>'});
+  h+='</div><div class="chips" role="group" aria-label="Fondamentale" style="margin-top:10px">';
+  funds().forEach(function(f){h+='<button data-act="evf" data-k="'+f.k+'" aria-pressed="'+(E.kind==='act'&&E.f===f.k)+'">'+f.n+'</button>'});
+  h+='</div>';
+  if(E.kind==='act'&&E.f){var cur=E.ace?'ace':E.sp?'sp':E.o;h+='<div class="chips" role="group" aria-label="Esito" style="margin-top:10px">';
+    evOutOpts(E.f).forEach(function(o){h+='<button data-act="evo" data-v="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+o[1]+'</button>'});h+='</div>'}
+  h+='</div>';
+  if(us){h+='<div class="card"><h2>Oppure errore delle avversarie</h2><div class="chips" role="group" aria-label="Errore avversario">';
+    OPP.forEach(function(o){h+='<button data-act="evx" data-v="'+o.k+'" aria-pressed="'+(E.kind==='oe'&&E.x===o.k)+'">'+o.n+'</button>'});h+='</div></div>'}
+  else{h+='<div class="card"><h2>Oppure un nostro fallo</h2><div class="chips" role="group" aria-label="Fallo">';
+    FAULT.forEach(function(f){h+='<button data-act="evk" data-v="'+f.k+'" aria-pressed="'+(E.kind==='flt'&&E.k===f.k)+'">'+f.n+'</button>'});h+='</div>'+
+    (E.kind==='flt'&&!fd(E.k).team?'<div class="note">Scegli anche l’atleta qui sopra.</div>':'')+'</div>'}
+  var ne=ptNew(e,E),imp=ne&&ne.f!=='OE'&&!FAULT.some(function(f){return f.k===ne.f})?evImpact(e,ne):null;
+  if(imp)h+='<div class="evimp'+(imp.lock?' warn':'')+'">'+imp.txt+(imp.lock?'<br>Il set è già chiuso: questa scelta cambierebbe il punteggio.':'<br>Attenzione: con questo esito il punto andrebbe all’altra squadra.')+'</div>';
+  if(E.msg)h+='<div class="evimp warn">'+E.msg+'</div>';
+  h+='<button class="btn solid" data-act="evsave" style="height:54px;font-size:18px"'+(!ne||imp&&imp.lock?' disabled':'')+'>Salva</button>';
+  h+='<button class="btn danger" data-act="evdel"'+(evPtLocked(e)?' disabled':'')+'>'+(E.arm?'Tocca ancora: togli il punto':'Togli il punto')+'</button>';
+  return h;
+}
+/* dalle scelte fatte, l'azione che prenderà il posto del punto (null = scelta incompleta) */
+function ptNew(e,E){
+  if(E.kind==='act'&&E.p!=null&&E.f&&E.o)return {p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp};
+  if(E.kind==='oe'&&E.x)return {p:0,f:'OE',o:'+',x:E.x};
+  if(E.kind==='flt'&&E.k){var t=fd(E.k).team;if(!t&&E.p==null)return null;return {p:t?0:E.p,f:E.k,o:'-'}}
+  return null;
+}
+function ptApply(i,E){
+  var e=state.events[i],ne=ptNew(e,E);if(!ne)return 'Scegli com’è stato fatto il punto.';
+  if(ne.f==='OE'||FAULT.some(function(f){return f.k===ne.f})){
+    var w=ne.f==='OE'?'us':'them';if(w!==e.pt&&evPtLocked(e))return 'Il set è già chiuso: non posso spostare il punto.';
+    evSnap();if(!evRePoint(i,e,w)){ui.evUndo.pop();return 'Non riesco a collegare il punto alla sequenza del set.'}
+    e.p=ne.p;e.f=ne.f;e.o=ne.o;if(ne.x)e.x=ne.x;e.ed=Date.now();return ''}
+  return evApply(i,ne);
+}
 function evClick(a,b){
   var E=ui.ev;
   if(a==='evall'){ui.ev={mode:'list',set:'all'};ui.zp=null;render();return true}
@@ -961,17 +1023,20 @@ function evClick(a,b){
   if(a==='evset'){var v=b.getAttribute('data-v');E.set=v==='all'?'all':+v;render();return true}
   if(a==='evundo'){var u=ui.evUndo.pop();if(u){var o=JSON.parse(u);state.events=o.events;state.rally=o.rally;state.score=o.score;ui.flash={t:'↶ Correzione annullata',c:'var(--mute)'};persist()}render();return true}
   if(a==='evedit'){var i=+b.getAttribute('data-i'),e=state.events[i];if(!e)return true;
-    ui.ev={mode:'edit',i:i,p:e.p,f:e.f,o:e.o,ace:!!e.ace,sp:!!e.sp,arm:false,msg:'',back:E&&E.mode==='list'?E.set:null};ui.zp=null;render();return true}
+    ui.ev=e.f==='PT'?{mode:'edit',i:i,kind:null,p:null,f:null,o:null,x:null,k:null,ace:false,sp:false,arm:false,msg:'',back:E&&E.mode==='list'?E.set:null}:
+      {mode:'edit',i:i,p:e.p,f:e.f,o:e.o,ace:!!e.ace,sp:!!e.sp,arm:false,msg:'',back:E&&E.mode==='list'?E.set:null};ui.zp=null;render();return true}
   if(!E)return false;
   if(a==='evback'){ui.ev=E.back!=null?{mode:'list',set:E.back}:null;render();return true}
-  if(a==='evp'){E.p=+b.getAttribute('data-n');E.msg='';E.arm=false;render();return true}
-  if(a==='evf'){E.f=b.getAttribute('data-k');if(!two(E.f))E.ace=false;if(!fd(E.f).dirty)E.sp=false;E.msg='';E.arm=false;render();return true}
+  if(a==='evp'){E.p=+b.getAttribute('data-n');if(E.kind!=='flt')E.kind='act';E.msg='';E.arm=false;render();return true}
+  if(a==='evx'){E.kind='oe';E.x=b.getAttribute('data-v');E.msg='';render();return true}
+  if(a==='evk'){E.kind='flt';E.k=b.getAttribute('data-v');E.msg='';render();return true}
+  if(a==='evf'){if(E.kind!==undefined)E.kind='act';E.f=b.getAttribute('data-k');if(!two(E.f))E.ace=false;if(!fd(E.f).dirty)E.sp=false;E.msg='';E.arm=false;render();return true}
   if(a==='evo'){var v2=b.getAttribute('data-v');E.ace=v2==='ace';E.sp=v2==='sp';E.o=v2==='ace'?'-':v2==='sp'?'.':v2;E.msg='';E.arm=false;render();return true}
   if(a==='evsave'||a==='evdel'){
     if(a==='evdel'&&!E.arm){E.arm=true;render();return true}
     var e2=state.events[E.i],fixed=e2.f==='OE'||FAULT.some(function(f){return f.k===e2.f});
     var ne=a==='evdel'?null:fixed?{p:(e2.f==='OE'||fd(e2.f).team)?e2.p:E.p,f:e2.f,o:e2.o}:{p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp};
-    var err=evApply(E.i,ne);if(err){E.msg=err;E.arm=false;render();return true}
+    var err=(a==='evsave'&&e2.f==='PT')?ptApply(E.i,E):evApply(E.i,ne);if(err){E.msg=err;E.arm=false;render();return true}
     ui.flash={t:a==='evdel'?'✓ Azione eliminata':'✓ Azione corretta',c:'var(--mute)'};
     ui.ev=E.back!=null?{mode:'list',set:E.back}:null;persist();render();return true}
   if(a==='evzone'){var e3=state.events[E.i];ui.ev=null;ui.tab='scout';ui.zp={e:e3};e3.ed=Date.now();render();return true}
