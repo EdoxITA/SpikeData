@@ -24,6 +24,7 @@ Ambiente: Chromium headless (Playwright) su Linux, viewport simulati di telefono
 | **t26** | Due dispositivi: chi segue vede in diretta e non modifica, subentro in due tocchi, l'altro passa a seguire, scout inattivo, lavoro offline conservato come copia, partita online non sovrascritta | 16/16 |
 | **t27** | Punti a mano: diventano azioni, si completano (ace, 4 tocchi, errore avversario), avviso se l’esito sposta il punto, il − toglie il punto da completare o lo stacca dall’azione vera | 30/30 |
 | **t28** | P1 in ricezione: opposto da 4 e banda da 2 sul primo attacco, poi scambio normale; in battuta e nelle altre rotazioni nessun cambiamento | 9/9 |
+| **t29** | Alzata brutta ma attaccabile: 4 esiti, nessun punto, colonna in Statistiche, correzione; l’attacco mantiene “Sporcato” | 16/16 |
 | SQL locale `sec_test_scout` | Blocco scout, subentro, ruoli (sola visione non subentra), archiviazione | 15/15 |
 | Tutte le suite precedenti | regressione | tutte superate |
 

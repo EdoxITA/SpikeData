@@ -11,6 +11,7 @@ Baseline: 20 schermate (telefono, tablet verticale/orizzontale, desktop × 5 sch
 ## Integrazioni delle nuove funzioni
 - **Correzione azioni** (2/11): le righe delle ultime azioni ora si toccano per correggerle; sotto c'è il link “Tutte le azioni · correggi”. Si apre la stessa schermata a pagina intera già usata per Salva partita e Time-out, con chip di atleta, fondamentale ed esito, impatto sul punteggio, “Salva correzione”, “Correggi le zone”, “Elimina azione” (due tocchi). Le azioni corrette mostrano “· corretta”. Prima/dopo: `ui_log_prima_dopo.png` (unica differenza nella baseline: il link sotto l'elenco).
 - **Punti a mano da completare** (2/11): riga “Punto a noi/a loro · da completare” tra le azioni; schermata “Com’è stato fatto il punto?” con le stesse chip (azione nostra, errore avversario o nostro fallo).
+- **Alzata brutta ma attaccabile** (2/11): quarto pulsante di esito per l’alzata, stesso stile arancione già usato per “Sporcato” e “Brutta”.
 - **Un solo scout per partita** (2/11): chi segue una partita fatta da un'altra persona vede nella barra in alto “In diretta · scout: email” e il pulsante “Prendi lo scout” (due tocchi). Usa lo stile della barra esistente.
 
 ## Proposte estetiche facoltative (non applicate)

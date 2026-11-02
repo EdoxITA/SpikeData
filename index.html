@@ -584,7 +584,7 @@ var FUND=[
  {k:'R',n:'Ricezione', eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Ricezione brutta'}, ace:'Ace subito'},
  {k:'A',n:'Attacco',   eff:'a', lab:{'+':'Punto','.':'Di là, no punto','-':'Errore / murato'}, dirty:'Sporcato, torna da noi',dirtyS:'Sporcato'},
  {k:'D',n:'Difesa',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Difesa brutta'}, ace:'Errore (punto)'},
- {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}},
+ {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}, dirty:'Brutta ma attaccabile',dirtyS:'Brutta, attaccabile',dirtySym:'•'},
  {k:'P',n:'Appoggio',  eff:'p', lab:{'+':'Buono','.':'Neutro','-':'Errore'}},
  {k:'M',n:'Muro',       eff:'p', adv:true, lab:{'+':'Muro punto','.':'Muro normale, palla recuperata','-':'Muro sbagliato (fuori da noi)'}}
 ];
@@ -599,7 +599,7 @@ var OSYM={'+':'+','.':'•','-':'−'};
 var COL={'+':'var(--o-hash)','.':'var(--o-neu)','-':'var(--o-err)'};
 function two(f){return f==='R'||f==='D'}
 function ocol(e){return (e.sp||(two(e.f)&&e.o==='-'&&!e.ace))?'var(--o-minus)':COL[e.o]}
-function osym(e){return e.sp?'↩':(two(e.f)&&e.ace)?'✕':OSYM[e.o]}
+function osym(e){return e.sp?(fd(e.f).dirtySym||'↩'):(two(e.f)&&e.ace)?'✕':OSYM[e.o]}
 
 var state={events:[],set:1,score:{},roles:{},auto:true,adv:false,extra:[],edits:{},absent:{},rally:[],first:{},lineup:{},subs:[],rot:true,meta:{opp:'',date:'',home:''},mid:null,updated:0};
 var ui={zo:null,zp:null,fPl:null,delArm:null,edit:null,msgE:'',player:null,fund:null,tab:'scout',fSet:'all',fFund:'B',flash:'',sPl:null,sFund:'B',arDel:null,lu:null,sub:null,bench:false,luAsked:{},fl:false,allF:null,ev:null,evUndo:[]};
@@ -729,7 +729,7 @@ function addScore(set,side,d){
 function addEvent(o,ace,sp){
   ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   if(ui.player==null||!ui.fund)return;
-  ace=!!ace&&two(ui.fund)&&o==='-';sp=!!sp&&ui.fund==='A'&&o==='.';
+  ace=!!ace&&two(ui.fund)&&o==='-';sp=!!sp&&!!fd(ui.fund).dirty&&o==='.';
   var f=ui.fund,pt=state.auto?autoPt(f,o,ace):null;
   if(state.meta&&!state.meta.date)state.meta.date=todayISO();
   var e={t:Date.now(),set:state.set,p:ui.player,f:f,o:o};if(ace)e.ace=1;if(sp)e.sp=1;e.ri=ralOf(state.set).length;e.si=opsOf(state.set).length;
@@ -897,7 +897,7 @@ function renderZone(){
 }
 function serr(e){return e.f==='B'&&e.o==='-'&&e.er?(e.er==='n'?'in rete':'fuori'):''}
 function aerr(e){return e.f==='A'&&e.o==='-'&&e.er?({m:'murato',n:'a rete',f:'fuori'})[e.er]||'':''}
-function zoneText(e){if(e.f==='Z'&&e.tg!=null)return 'a '+e.tg+' '+pname(e.tg);if(serr(e))return serr(e);if(aerr(e))return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+aerr(e);if(e.sp)return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+'sporcato';if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
+function zoneText(e){if(e.f==='Z'&&e.tg!=null)return 'a '+e.tg+' '+pname(e.tg);if(serr(e))return serr(e);if(aerr(e))return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+aerr(e);if(e.sp&&e.f==='A')return (e.z&&e.z.a?'da zona '+e.z.a+' · ':'')+'sporcato';if(!zhas(e))return '';if(e.f==='R')return 'zona '+e.z.a;if(e.f==='B')return 'zona '+e.z.b;return (e.z.a||'–')+'→'+(e.z.b||'–')}
 function renderFirst(){
   var el=$('firstBar');if(!state.adv){el.hidden=true;el.innerHTML='';return}
   var set=state.set,ex=state.first&&state.first[set],fs=firstOf(set),h;
@@ -963,7 +963,7 @@ function renderScout(){
     var l=(F&&F.lab[o])||OLAB[o];
     h+='<button class="out" data-act="out" data-o="'+o+'"'+((F&&F.ace&&o==='-')?' data-brut="1"':'')+(ready?'':' disabled')+'><span class="sym">'+OSYM[o]+'</span><span class="lb">'+l+'</span></button>';
   });
-  if(F&&F.dirty)h+='<button class="out" data-act="out" data-o="." data-sp="1" data-brut="1"'+(ready?'':' disabled')+'><span class="sym">↩</span><span class="lb">'+F.dirtyS+'</span></button>';
+  if(F&&F.dirty)h+='<button class="out" data-act="out" data-o="." data-sp="1" data-brut="1"'+(ready?'':' disabled')+'><span class="sym">'+(F.dirtySym||'↩')+'</span><span class="lb">'+F.dirtyS+'</span></button>';
   if(F&&F.ace)h+='<button class="out" data-act="out" data-o="-" data-ace="1"'+(ready?'':' disabled')+'><span class="sym">✕</span><span class="lb">'+F.ace+'</span></button>';
   $('outs').className='outs'+(F&&(F.ace||F.dirty)?' r4':'');
   $('outs').innerHTML=h;
@@ -1027,7 +1027,7 @@ function evApply(i,ne){
   return '';
 }
 function evOutOpts(f){var F=fd(f),r=[['+',F.lab['+']],['.',F.lab['.']],['-',F.lab['-']]];
-  if(two(f))r.push(['ace',F.ace]);if(F.dirty&&state.adv)r.push(['sp',F.dirty]);return r}
+  if(two(f))r.push(['ace',F.ace]);if(F.dirty)r.push(['sp',F.dirty]);return r}
 function evHtml(){
   var E=ui.ev,h='<div class="sin">';
   if(E.mode==='list'){
@@ -1136,8 +1136,8 @@ function evClick(a,b){
 }
 function filtered(){return state.events.filter(function(e){return ui.fSet==='all'||e.set===ui.fSet})}
 function statsFor(list,pn,fk){
-  var c={'+':0,'.':0,'-':0,ace:0,bad:0,tot:0};
-  list.forEach(function(e){if(e.p===pn&&e.f===fk){c[e.o]++;c.tot++;if(e.ace)c.ace++;else if(two(e.f)&&e.o==='-')c.bad++}});return c;
+  var c={'+':0,'.':0,'-':0,ace:0,bad:0,sp:0,tot:0};
+  list.forEach(function(e){if(e.p===pn&&e.f===fk){c[e.o]++;c.tot++;if(e.sp)c.sp++;if(e.ace)c.ace++;else if(two(e.f)&&e.o==='-')c.bad++}});return c;
 }
 function effOf(c,type){
   if(!c.tot)return null;
@@ -1150,8 +1150,8 @@ function renderStats(){
   $('fSet').innerHTML=h;
   h='';funds().forEach(function(f){h+='<button data-act="ffund" data-k="'+f.k+'" aria-pressed="'+(ui.fFund===f.k)+'">'+f.n+'</button>'});
   $('fFund').innerHTML=h;
-  var F=fd(ui.fFund),list=filtered(),tot={'+':0,'.':0,'-':0,bad:0,ace:0,tot:0};
-  var cols=two(F.k)?[['+','+',COL['+']],['.','•',COL['.']],['bad','Brutta','var(--o-minus)'],['ace',F.k==='R'?'Ace':'Errore','var(--o-err)']]:OUTS.map(function(o){return [o,OSYM[o],COL[o]]});
+  var F=fd(ui.fFund),list=filtered(),tot={'+':0,'.':0,'-':0,bad:0,ace:0,sp:0,tot:0};
+  var cols=two(F.k)?[['+','+',COL['+']],['.','•',COL['.']],['bad','Brutta','var(--o-minus)'],['ace',F.k==='R'?'Ace':'Errore','var(--o-err)']]:F.k==='Z'?[['+','+',COL['+']],['.','•',COL['.']],['sp','di cui brutte','var(--o-minus)'],['-','−',COL['-']]]:OUTS.map(function(o){return [o,OSYM[o],COL[o]]});
   var t='<thead><tr><th>Atleta</th><th>Tot</th>';
   cols.forEach(function(k){t+='<th style="color:'+k[2]+'">'+k[1]+'</th>'});
   var pc=F.eff==='a'?[['+',F.k==='B'?'Ace %':'Punti %',COL['+']],['-','Err. %',COL['-']]]:[];
@@ -1160,7 +1160,7 @@ function renderStats(){
   function pcs(c){var r='';pc.forEach(function(k){r+='<td class="'+(c[k[0]]?'':'zero')+'">'+pct(c[k[0]]/c.tot)+'</td>'});return r}
   roster().forEach(function(p){
     var c=statsFor(list,p.n,F.k);if(!c.tot)return;
-    ['+','.','-','bad','ace','tot'].forEach(function(k){tot[k]+=c[k]});
+    ['+','.','-','bad','ace','sp','tot'].forEach(function(k){tot[k]+=c[k]});
     t+='<tr><td><b>'+p.n+'</b> '+p.s+' <small class="note">'+tagOf(p.n)+'</small></td><td class="num">'+c.tot+'</td>';
     cols.forEach(function(k){t+='<td class="'+(c[k[0]]?'':'zero')+'">'+c[k[0]]+'</td>'});
     t+=pcs(c)+'<td class="eff'+(effOf(c,F.eff)<0?' neg':'')+'">'+pct(effOf(c,F.eff))+'</td></tr>';
@@ -1172,7 +1172,7 @@ function renderStats(){
   renderZoneMap(list);renderZoneDet(list);renderRally();renderRotStats();renderSetStats();renderSubStats();renderFaults();
   $('effNote').textContent=F.eff==='a'?
     (F.k==='B'?'Efficienza = (ace − errori) ÷ battute: sotto lo 0% vuol dire più errori che ace. Ace % e Err. % = ace ed errori sul totale delle battute.':'Efficienza = (punti − errori) ÷ attacchi: sotto lo 0% vuol dire più errori che punti. Punti % e Err. % = punti ed errori sul totale.'):
-    (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':F.k==='D'?'Positività = difese buone (+) ÷ totali. Brutta = difesa sbagliata ma la palla resta in gioco (nessun punto). Errore = punto subito.':'Positività = azioni buone (+) ÷ azioni totali.');
+    (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':F.k==='Z'?'Positività = alzate buone (+) ÷ totali. “Di cui brutte” = alzate brutte ma attaccabili: sono già contate tra le neutre (•), nessun punto.':F.k==='D'?'Positività = difese buone (+) ÷ totali. Brutta = difesa sbagliata ma la palla resta in gioco (nessun punto). Errore = punto subito.':'Positività = azioni buone (+) ÷ azioni totali.');
 }
 
 var YEL='#e0a800',YELP=[.88,.66,0];

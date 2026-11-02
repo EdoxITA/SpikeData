@@ -1,6 +1,7 @@
 # Changelog
 
 ## Non pubblicato
+- Alzata: nuovo esito “Brutta ma attaccabile” (conta tra le neutre, nessun punto); in Statistiche colonna “di cui brutte”; si può scegliere anche nella correzione.
 - Palleggio in 1 in ricezione: sul primo attacco dello scambio l’opposto attacca da zona 4 e la banda da zona 2 (zona d’attacco automatica e disegno del campo); dal secondo attacco si torna allo scambio normale.
 - I punti messi a mano con + compaiono tra le azioni come “da completare”: dopo (anche rivedendo il video) si sceglie com’è stato fatto (azione di un’atleta, errore delle avversarie o nostro fallo). Il − toglie il punto anche dall’azione collegata, senza lasciare dati incoerenti.
 
