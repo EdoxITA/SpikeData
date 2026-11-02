@@ -1,6 +1,6 @@
 # Changelog
 
-## Non pubblicato (branch `miglioramenti-fase-a`)
+## Versione 27 · 2 novembre 2026
 - Sorgenti e script di build nel progetto.
 - Avviso quando il salvataggio sul dispositivo non riesce.
 - PDF del report: simboli e parentesi corretti.
@@ -8,3 +8,4 @@
 - Le partite eliminate non ricompaiono da copie vecchie su altri dispositivi.
 - Il service worker cancella solo le proprie cache.
 - Inviti: codice non valido gestito senza errore (pronto per il limite di tentativi lato server).
+- Zone: gli errori senza zona di arrivo compaiono anche nel dettaglio delle zone.
