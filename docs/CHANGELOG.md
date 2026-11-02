@@ -1,5 +1,9 @@
 # Changelog
 
+## Non pubblicato
+- Correzione ed eliminazione di qualsiasi azione registrata, con ricalcolo di punteggio, servizio, rotazioni e statistiche; annulla correzione.
+- Un solo scout per partita: gli altri membri la seguono in diretta e possono subentrare; il lavoro offline non inviato non si perde (copia in Stagione). Richiede l'aggiornamento del database.
+
 ## Versione 27 · 2 novembre 2026
 - Sorgenti e script di build nel progetto.
 - Avviso quando il salvataggio sul dispositivo non riesce.

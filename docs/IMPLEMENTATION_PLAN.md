@@ -9,7 +9,7 @@ Regola generale: nessun push, pull request o pubblicazione prima che il propriet
 | C | Sorgenti nel repository (fatto), separazione progressiva in moduli (logica sportiva, statistiche, persistenza, sync, import/export) senza cambiare l'aspetto; modello per scambi; formule statistiche in un solo punto; test in `tests/` | Da fare |
 | D | Archivio IndexedDB con migrazione verificata da `localStorage` (copia originale conservata); stato di salvataggio veritiero; coda di invio persistente; operazioni per azione con revisioni; un solo scout attivo per partita controllato dal server; controllo più schede | Da fare |
 | E | Scouting avversario facoltativo e indipendente dalla modalità avanzata (rosa avversaria con numeri/alias, “non identificato”, modalità semplice/dettagliata, punteggio unico) | Da fare |
-| F | Correzione delle azioni passate con ricalcolo di punteggio, servizio, rotazioni e statistiche; schermo sempre acceso; scorciatoie da tastiera; vibrazione facoltativa | Da fare |
+| F | ✔ Correzione delle azioni passate (fatta 2/11) · con ricalcolo di punteggio, servizio, rotazioni e statistiche; schermo sempre acceso; scorciatoie da tastiera; vibrazione facoltativa | Da fare |
 | G | Regole personalizzate salvate nella partita (set, punti, scarto, tie-break, allenamento); statistiche con numero di osservazioni; stagione e report coerenti tra schermo, PDF ed Excel | Da fare |
 | H | PWA: versione visibile, aggiornamento proposto in momento sicuro, aggiornamento pdf.js/SheetJS, CSP; privacy: informativa corretta, export dati, gestione proprietà squadre | Da fare |
 | I | Audit finale: lettura in sola lettura delle policy di produzione, test per ruolo con utenti di prova, partita simulata di 5 set con interruzioni di rete | Da fare |

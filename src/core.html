@@ -110,6 +110,13 @@ h2{font-family:var(--f-disp);font-weight:600;font-size:15px;letter-spacing:.1em;
 .log .badge{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-family:var(--f-disp);font-weight:700;font-size:19px;color:var(--on-o)}
 .log .what{min-width:0;font-size:15px}
 .log .what small{color:var(--mute)}
+.log button.row{width:100%;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:44px}
+.log button.row:last-child{border-bottom:0}
+.log button.row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.log .row.ed .what small::after{content:' · corretta';color:var(--accent)}
+.loglnk{display:block;margin:4px 0 0 auto;min-height:44px;padding:0 4px;border:0;background:none;color:var(--accent);font-weight:600;font-size:14px;text-decoration:underline;cursor:pointer}
+.evimp{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+.evimp.warn{border-color:var(--o-err);color:var(--o-err)}
 .empty{padding:14px 12px;color:var(--mute);font-size:14px}
 .btn{height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:16px}
 .btn.danger{color:var(--o-err);border-color:var(--o-err)}
@@ -510,7 +517,7 @@ function ocol(e){return (e.sp||(two(e.f)&&e.o==='-'&&!e.ace))?'var(--o-minus)':C
 function osym(e){return e.sp?'↩':(two(e.f)&&e.ace)?'✕':OSYM[e.o]}
 
 var state={events:[],set:1,score:{},roles:{},auto:true,adv:false,extra:[],edits:{},absent:{},rally:[],first:{},lineup:{},subs:[],rot:true,meta:{opp:'',date:'',home:''},mid:null,updated:0};
-var ui={zo:null,zp:null,fPl:null,edit:null,msgE:'',player:null,fund:null,tab:'scout',fSet:'all',fFund:'B',flash:'',sPl:null,sFund:'B',arDel:null,lu:null,sub:null,bench:false,luAsked:{},fl:false,allF:null};
+var ui={zo:null,zp:null,fPl:null,edit:null,msgE:'',player:null,fund:null,tab:'scout',fSet:'all',fFund:'B',flash:'',sPl:null,sFund:'B',arDel:null,lu:null,sub:null,bench:false,luAsked:{},fl:false,allF:null,ev:null,evUndo:[]};
 var docRef=null,writing=false,dirty=false,HOOK={};
 var LS='scout-garbagnate-v1';
 
@@ -632,6 +639,7 @@ function addScore(set,side,d){
   var s=JSON.parse(JSON.stringify(sc(set)));s[side]=Math.max(0,s[side]+d);state.score[set]=s;return true;
 }
 function addEvent(o,ace,sp){
+  ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   if(ui.player==null||!ui.fund)return;
   ace=!!ace&&two(ui.fund)&&o==='-';sp=!!sp&&ui.fund==='A'&&o==='.';
   var f=ui.fund,pt=state.auto?autoPt(f,o,ace):null;
@@ -644,6 +652,7 @@ function addEvent(o,ace,sp){
   ui.fund=null;ui.zp=(state.adv&&(f==='B'||(f==='A'&&!(sp&&az))||f==='R'||(f==='Z'&&o!=='-')))?{e:e}:null;persist();render();
 }
 function addFault(k){
+  ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   var f=fd(k);if(!f||!f.team&&ui.player==null)return;
   var p=f.team?0:ui.player,pt=state.auto?'them':null;
   if(state.meta&&!state.meta.date)state.meta.date=todayISO();
@@ -654,6 +663,7 @@ function addFault(k){
   ui.fund=null;ui.zp=null;ui.fl=false;persist();render();
 }
 function addOpp(x){
+  ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   var pt=state.auto?'us':null;
   if(state.meta&&!state.meta.date)state.meta.date=todayISO();
   var e={t:Date.now(),set:state.set,p:0,f:'OE',o:'+',x:x};e.ri=ralOf(state.set).length;e.si=opsOf(state.set).length;
@@ -663,6 +673,7 @@ function addOpp(x){
   ui.player=null;ui.fund=null;ui.zp=null;ui.oe=false;ui.fl=false;persist();render();
 }
 function undo(){
+  ui.evUndo=[]; /* dopo una nuova azione non si torna a una correzione precedente */
   var e=state.events.pop();if(!e)return;ui.zp=null;
   if(e.pt){addScore(e.set,e.pt,-1);popRally(e.set,e.pt)}
   ui.flash={t:'↶ Annullata: '+who(e)+' · '+fd(e.f).n+' · '+lab(e),c:'var(--mute)'};
@@ -851,12 +862,121 @@ function renderScout(){
   renderZone();renderFirst();
   $('toBtn').hidden=!(state.events.length||ralOf(state.set).length);$('svBtn').hidden=!isUnsaved();
   var fl=$('flash');fl.textContent=ui.flash?ui.flash.t:'';fl.style.color=ui.flash?ui.flash.c:'';
-  var ev=state.events.slice(-5).reverse();
+  var n0=state.events.length,ev=state.events.slice(-5).reverse();
   if(!ev.length){$('log').innerHTML='<div class="empty">Nessuna azione registrata.</div>'}
-  else{h='';ev.forEach(function(e){
-    h+='<div class="row"><span class="badge" style="background:'+ocol(e)+'">'+osym(e)+'</span>'+
-      '<span class="what"><b>'+who(e)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zoneText(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></div>'});
+  else{h='';ev.forEach(function(e,k){h+=evRow(e,n0-1-k)});
+    h+='<button class="loglnk" data-act="evall">Tutte le azioni · correggi</button>';
     $('log').innerHTML=h}
+}
+
+/* ---- correzione delle azioni già registrate ----
+   Le correzioni che non cambiano chi ha fatto il punto toccano solo le statistiche.
+   Quelle che lo cambiano aggiornano punteggio, sequenza dei punti (quindi servizio e rotazioni) e posizioni delle azioni successive.
+   In un set già chiuso, o se un set successivo è già iniziato, il punteggio non si tocca: si può correggere solo il resto. */
+function evRow(e,i){
+  return '<button class="row'+(e.ed?' ed':'')+'" data-act="evedit" data-i="'+i+'"><span class="badge" style="background:'+ocol(e)+'">'+osym(e)+'</span>'+
+    '<span class="what"><b>'+who(e)+'</b> · '+fd(e.f).n+' <small>· '+lab(e)+(zoneText(e)?' · '+zoneText(e):'')+'</small></span><small class="note">Set '+e.set+'</small></button>';
+}
+function rallyIdx(set,k){var c=-1;for(var i=0;i<state.rally.length;i++)if(state.rally[i].set===set){c++;if(c===k)return i}return -1}
+function scoreAdd(set,side,d){var s=JSON.parse(JSON.stringify(sc(set)));s[side]=Math.max(0,s[side]+d);state.score[set]=s}
+function evPtLocked(e){return !!setOver(e.set)||e.set<state.set&&ralOf(state.set).length>0}
+function evNewPt(e,ne){if(!ne)return null;if(e.f==='OE'||fd(e.f).team||FAULT.some(function(f){return f.k===e.f}))return e.pt||null;
+  return state.auto?autoPt(ne.f,ne.o,!!ne.ace):(e.pt||null)}
+/* cambia il punto collegato all'azione i: null -> lato, lato -> null, lato -> altro lato */
+function evRePoint(i,e,w){
+  var old=e.pt||null;if(old===w)return true;
+  if(old){var j=rallyIdx(e.set,e.ri);if(j<0||state.rally[j].w!==old)return false}
+  if(old&&w){state.rally[j].w=w;scoreAdd(e.set,old,-1);scoreAdd(e.set,w,1);e.pt=w;return true}
+  if(old){state.rally.splice(j,1);scoreAdd(e.set,old,-1);delete e.pt;
+    state.events.forEach(function(x,ix){if(ix>i&&x.set===e.set&&x.ri!=null&&x.ri>e.ri)x.ri--});return true}
+  var n=ralOf(e.set).length;if(e.ri==null||e.ri>n)return false;
+  var at=rallyIdx(e.set,e.ri);if(at<0){at=state.rally.length;for(var q=state.rally.length-1;q>=0;q--)if(state.rally[q].set===e.set){at=q+1;break}}
+  state.rally.splice(at,0,{set:e.set,w:w,si:e.si});scoreAdd(e.set,w,1);e.pt=w;
+  state.events.forEach(function(x,ix){if(ix>i&&x.set===e.set&&x.ri!=null&&x.ri>=e.ri)x.ri++});return true;
+}
+function evSnap(){ui.evUndo.push(JSON.stringify({events:state.events,rally:state.rally,score:state.score}));if(ui.evUndo.length>10)ui.evUndo.shift()}
+function evImpact(e,ne){
+  var w=evNewPt(e,ne),old=e.pt||null;if(w===old)return null;
+  var s=sc(e.set),a=s.us+'–'+s.them,t={us:s.us,them:s.them};if(old)t[old]--;if(w)t[w]++;
+  return {lock:evPtLocked(e),txt:'Punteggio del set '+e.set+': '+a+' → '+t.us+'–'+t.them};
+}
+function evApply(i,ne){
+  var e=state.events[i];if(!e)return 'Azione non trovata.';
+  var w=evNewPt(e,ne);
+  if(w!==(e.pt||null)&&evPtLocked(e))return 'Questa correzione cambierebbe il punteggio di un set già chiuso: puoi cambiare atleta, fondamentale o esito solo se il punto resta a chi l’ha fatto. Per il punteggio usa i tasti + e − del set.';
+  evSnap();
+  if(!evRePoint(i,e,w)){ui.evUndo.pop();return 'Non riesco a collegare questa azione al punteggio (il punteggio è stato cambiato a mano). Correggi il punteggio con i tasti + e −.'}
+  if(!ne){state.events.splice(i,1);return ''}
+  if(ne.f!==e.f){delete e.z;delete e.tg;if(state.adv&&ne.f==='A'){var az=atkZone(ne.p);if(az)e.z={a:az,b:null}}}
+  if(ne.o!=='-')delete e.er;
+  e.p=ne.p;e.f=ne.f;e.o=ne.o;if(ne.ace)e.ace=1;else delete e.ace;if(ne.sp)e.sp=1;else delete e.sp;e.ed=Date.now();
+  return '';
+}
+function evOutOpts(f){var F=fd(f),r=[['+',F.lab['+']],['.',F.lab['.']],['-',F.lab['-']]];
+  if(two(f))r.push(['ace',F.ace]);if(F.dirty&&state.adv)r.push(['sp',F.dirty]);return r}
+function evHtml(){
+  var E=ui.ev,h='<div class="sin">';
+  if(E.mode==='list'){
+    h+='<div class="srow"><h1>Azioni registrate</h1><button class="btn" data-act="evclose">Chiudi</button></div>';
+    h+='<div class="note">Tocca un’azione per correggerla o eliminarla. Punteggio, servizio, rotazioni e statistiche si aggiornano da soli.</div>';
+    if(ui.evUndo.length)h+='<button class="btn" data-act="evundo">↶ Annulla l’ultima correzione</button>';
+    var sets=[];state.events.forEach(function(e){if(sets.indexOf(e.set)<0)sets.push(e.set)});sets.sort();
+    h+='<div class="chips" role="group" aria-label="Set"><button data-act="evset" data-v="all" aria-pressed="'+(E.set==='all')+'">Tutti</button>';
+    sets.forEach(function(k){h+='<button data-act="evset" data-v="'+k+'" aria-pressed="'+(E.set===k)+'">Set '+k+'</button>'});h+='</div>';
+    var rows='';for(var i=state.events.length-1;i>=0;i--){var e=state.events[i];if(E.set==='all'||e.set===E.set)rows+=evRow(e,i)}
+    h+='<div class="log">'+(rows||'<div class="empty">Nessuna azione registrata.</div>')+'</div>';
+    return h+'</div>';
+  }
+  var e=state.events[E.i];if(!e){ui.ev={mode:'list',set:'all'};return evHtml()}
+  var fixed=e.f==='OE'||FAULT.some(function(f){return f.k===e.f}),teamF=fixed&&(e.f==='OE'||fd(e.f).team);
+  h+='<div class="srow"><h1>Correggi azione</h1><button class="btn" data-act="evback">Indietro</button></div>';
+  h+='<div class="log" style="margin-top:0">'+evRow(e,E.i).replace('data-act="evedit"','data-act="evnone" tabindex="-1"')+'</div>';
+  if(!teamF){
+    h+='<div class="card"><h2>Atleta</h2><div class="chips" role="group" aria-label="Atleta">';
+    roster().forEach(function(p){h+='<button data-act="evp" data-n="'+p.n+'" aria-pressed="'+(E.p===p.n)+'">'+p.n+' '+p.s+'</button>'});
+    h+='</div></div>';
+  }
+  if(!fixed){
+    h+='<div class="card"><h2>Fondamentale</h2><div class="chips" role="group" aria-label="Fondamentale">';
+    funds().forEach(function(f){h+='<button data-act="evf" data-k="'+f.k+'" aria-pressed="'+(E.f===f.k)+'">'+f.n+'</button>'});
+    h+='</div><h2 style="margin-top:12px">Esito</h2><div class="chips" role="group" aria-label="Esito">';
+    var cur=E.ace?'ace':E.sp?'sp':E.o;
+    evOutOpts(E.f).forEach(function(o){h+='<button data-act="evo" data-v="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+o[1]+'</button>'});
+    h+='</div></div>';
+  }
+  var ne=fixed?{p:teamF?e.p:E.p,f:e.f,o:e.o}:{p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp},imp=evImpact(e,ne);
+  if(imp)h+='<div class="evimp'+(imp.lock?' warn':'')+'">'+imp.txt+(imp.lock?'<br>Il set è già chiuso: questa modifica non si può salvare.':'')+'</div>';
+  if(E.msg)h+='<div class="evimp warn">'+E.msg+'</div>';
+  if(!teamF||!fixed)h+='<button class="btn solid" data-act="evsave" style="height:54px;font-size:18px"'+(imp&&imp.lock?' disabled':'')+'>Salva correzione</button>';
+  if(!fixed&&zok(e.f)&&e.f===E.f)h+='<button class="btn" data-act="evzone">Correggi le zone</button>';
+  var dl=e.pt?evImpact(e,null):null;
+  h+='<button class="btn danger" data-act="evdel"'+(dl&&dl.lock?' disabled':'')+'>'+(E.arm?'Tocca ancora: elimina l’azione':'Elimina azione')+'</button>';
+  if(dl)h+='<div class="note">'+(dl.lock?'Eliminare questa azione cambierebbe il punteggio di un set già chiuso.':'Eliminandola: '+dl.txt+'.')+'</div>';
+  return h+'</div>';
+}
+function evClick(a,b){
+  var E=ui.ev;
+  if(a==='evall'){ui.ev={mode:'list',set:'all'};ui.zp=null;render();return true}
+  if(a==='evclose'){ui.ev=null;render();return true}
+  if(a==='evset'){var v=b.getAttribute('data-v');E.set=v==='all'?'all':+v;render();return true}
+  if(a==='evundo'){var u=ui.evUndo.pop();if(u){var o=JSON.parse(u);state.events=o.events;state.rally=o.rally;state.score=o.score;ui.flash={t:'↶ Correzione annullata',c:'var(--mute)'};persist()}render();return true}
+  if(a==='evedit'){var i=+b.getAttribute('data-i'),e=state.events[i];if(!e)return true;
+    ui.ev={mode:'edit',i:i,p:e.p,f:e.f,o:e.o,ace:!!e.ace,sp:!!e.sp,arm:false,msg:'',back:E&&E.mode==='list'?E.set:null};ui.zp=null;render();return true}
+  if(!E)return false;
+  if(a==='evback'){ui.ev=E.back!=null?{mode:'list',set:E.back}:null;render();return true}
+  if(a==='evp'){E.p=+b.getAttribute('data-n');E.msg='';E.arm=false;render();return true}
+  if(a==='evf'){E.f=b.getAttribute('data-k');if(!two(E.f))E.ace=false;if(!fd(E.f).dirty)E.sp=false;E.msg='';E.arm=false;render();return true}
+  if(a==='evo'){var v2=b.getAttribute('data-v');E.ace=v2==='ace';E.sp=v2==='sp';E.o=v2==='ace'?'-':v2==='sp'?'.':v2;E.msg='';E.arm=false;render();return true}
+  if(a==='evsave'||a==='evdel'){
+    if(a==='evdel'&&!E.arm){E.arm=true;render();return true}
+    var e2=state.events[E.i],fixed=e2.f==='OE'||FAULT.some(function(f){return f.k===e2.f});
+    var ne=a==='evdel'?null:fixed?{p:(e2.f==='OE'||fd(e2.f).team)?e2.p:E.p,f:e2.f,o:e2.o}:{p:E.p,f:E.f,o:E.o,ace:E.ace,sp:E.sp};
+    var err=evApply(E.i,ne);if(err){E.msg=err;E.arm=false;render();return true}
+    ui.flash={t:a==='evdel'?'✓ Azione eliminata':'✓ Azione corretta',c:'var(--mute)'};
+    ui.ev=E.back!=null?{mode:'list',set:E.back}:null;persist();render();return true}
+  if(a==='evzone'){var e3=state.events[E.i];ui.ev=null;ui.tab='scout';ui.zp={e:e3};e3.ed=Date.now();render();return true}
+  if(a==='evnone')return true;
+  return false;
 }
 function filtered(){return state.events.filter(function(e){return ui.fSet==='all'||e.set===ui.fSet})}
 function statsFor(list,pn,fk){
@@ -1752,9 +1872,9 @@ function C0(){return (state.rot&&lu(state.set))?courtAt(state.set):null}
 function renderSheet(){
   var el=$('sheet');
   if(!ui.lu&&!ui.sub&&needLu()){ui.luAsked[state.set]=1;openLu(state.set)}
-  if(!ui.lu&&!ui.sub&&!ui.to&&!ui.sv){if(!el.hidden){el.hidden=true;el.innerHTML=''}return}
+  if(!ui.lu&&!ui.sub&&!ui.to&&!ui.sv&&!ui.ev){if(!el.hidden){el.hidden=true;el.innerHTML=''}return}
   var top=el.scrollTop,fo=document.activeElement&&document.activeElement.id,fv=fo&&$(fo)?$(fo).value:null;
-  el.innerHTML=ui.sv?svHtml():ui.lu?luHtml():ui.sub?subHtml():toHtml();el.hidden=false;el.scrollTop=top;
+  el.innerHTML=ui.ev?evHtml():ui.sv?svHtml():ui.lu?luHtml():ui.sub?subHtml():toHtml();el.hidden=false;el.scrollTop=top;
   if(fo&&$(fo)&&el.contains($(fo))){$(fo).value=fv;$(fo).focus()}
 }
 var HS=false;
@@ -2027,6 +2147,7 @@ document.addEventListener('click',function(ev){
   var b=ev.target.closest('[data-act],[data-tab],#undo,#pdf,#xlsx,#reset,#addBtn');if(!b)return;
   var a=b.getAttribute('data-act');
   if(HOOK.click&&HOOK.click(b,a))return;if(HOOK.ro&&HOOK.ro(b,a))return;
+  if(a&&/^ev/.test(a)&&evClick(a,b))return;
   if(b.hasAttribute('data-tab')){ui.tab=b.getAttribute('data-tab');render();return}
   if(b.id==='undo'){undo();return}
   if(b.id==='addBtn'){
@@ -2064,7 +2185,7 @@ document.addEventListener('click',function(ev){
     var had=hasData(),lab=mLabel(state.meta);
     if(had){var sn=snapMatch();arch=arch.filter(function(m){return m.id!==sn.id});arch.push(sn);arSave()}
     newMatchState();persist();render();$('msg2').textContent=had?'«'+lab+'» è in Stagione. Nuova partita pronta.':'Nuova partita pronta.';return}
-  if(a==='pt'){bump(b.getAttribute('data-side'),+b.getAttribute('data-d'));return}
+  if(a==='pt'){ui.evUndo=[];bump(b.getAttribute('data-side'),+b.getAttribute('data-d'));return}
   if(a==='nextset'){state.set=Math.min(5,state.set+1);persist();render();return}
   if(a==='set'){state.set=+b.getAttribute('data-set');persist();render();return}
   if(a==='adv'){state.adv=!state.adv;ui.zp=null;if(ui.fund&&funds().every(function(f){return f.k!==ui.fund}))ui.fund=null;if(funds().every(function(f){return f.k!==ui.fFund}))ui.fFund='B';persist();render();return}

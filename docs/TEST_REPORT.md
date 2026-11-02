@@ -16,4 +16,13 @@ Ambiente: Chromium headless (Playwright) su Linux, viewport simulati di telefono
 | Baseline visiva | 20 schermate prima/dopo confrontate pixel per pixel | nessuna differenza |
 | PDF report | Simboli “−” “•” e parentesi nel PDF generato dall'app installabile | errati prima, corretti dopo |
 
+## 2 novembre 2026
+
+| Suite | Cosa verifica | Esito |
+|---|---|---|
+| **t25** | Correzioni: punto spostato, punto aggiunto nel posto giusto della sequenza, eliminazione con posizioni scalate, annulla correzione, solo statistica, set chiuso bloccato, persistenza, rotazione e servizio ricalcolati (telefono e tablet) | 37/37 |
+| **t26** | Due dispositivi: chi segue vede in diretta e non modifica, subentro in due tocchi, l'altro passa a seguire, scout inattivo, lavoro offline conservato come copia, partita online non sovrascritta | 16/16 |
+| SQL locale `sec_test_scout` | Blocco scout, subentro, ruoli (sola visione non subentra), archiviazione | 15/15 |
+| Tutte le suite precedenti | regressione | tutte superate |
+
 Una suite (t18) è stata aggiornata nella sessione precedente per l'efficienza che ora può essere negativa.

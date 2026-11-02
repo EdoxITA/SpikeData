@@ -12,6 +12,17 @@ var ROLEL={owner:'Proprietario',editor:'Fa lo scout',viewer:'Solo visione'};
 function stBody(){return {savedAt:state.savedAt||0,events:state.events,set:state.set,score:state.score,roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:state.absent,rally:state.rally,first:state.first,lineup:state.lineup,subs:state.subs,rot:state.rot,meta:state.meta,mid:state.mid,updated:state.updated||Date.now()}}
 function freshState(){return {events:[],set:1,score:{},roles:state.roles,auto:state.auto,adv:state.adv,extra:state.extra,edits:state.edits,absent:{},rally:[],first:{},lineup:{},subs:[],rot:state.rot,meta:{name:'',opp:'',date:'',home:''},mid:null,updated:0,savedAt:0}}
 function canWrite(){return CL.team&&(CL.role==='owner'||CL.role==='editor')}
+/* ---- un solo scout per partita: chi sta scrivendo la partita in corso; gli altri la seguono in diretta ---- */
+var LOCKMS=120000;
+function setSc(m){if(m&&m.id)CL.sc={id:m.id,by:m.scout_id||null,at:m.scout_at?Date.parse(m.scout_at):0}}
+function scoutOther(){var s=CL.sc;if(!CL.team||!CL.user||!state.mid||!s||s.id!==state.mid||!s.by||s.by===CL.user.id)return null;
+  if(Date.now()-s.at>LOCKMS)return null;return s.by}
+function scoutName(uid){var m=CL.members.filter(function(x){return x.user_id===uid})[0];return m&&m.email?m.email:'un’altra persona'}
+function lostLock(){ /* qualcun altro è subentrato mentre ero offline: la mia copia non va persa, finisce in Stagione */
+  if(hasData()){var sn=snapMatch();sn.id=newId();sn.meta=sn.meta||{};sn.meta.name=((sn.meta.name||(sn.meta.opp?'vs '+sn.meta.opp:'Partita'))+' · copia non inviata').slice(0,60);sn.saved=Date.now();arch.push(sn);arSave()}
+  state.updated=0;CL.msg='Un’altra persona ha preso lo scout di questa partita: la tua copia è in Stagione come «copia non inviata». Ora la segui in diretta.';
+  ui.flash={t:CL.msg,c:'var(--o-err)'};pullAll();
+}
 function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
   if(/Failed to fetch|NetworkError|network/i.test(m))return 'Non c’è connessione: riprova quando torna la rete.';
   if(/rate limit|too many|security purposes/i.test(m))return 'Troppi tentativi ravvicinati: aspetta un minuto e riprova.';
@@ -28,7 +39,8 @@ function clErr(e){var m=(e&&(e.message||e.error_description))||String(e||'');
 function clStatus(){
   if(!CL.team||!CL.user)return;
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0],nm=t?t.name:'squadra';
-  setSaveState(!navigator.onLine?'Offline · salvo online appena torna la rete':CL.role==='viewer'?'Solo visione · '+nm+' (in diretta)':CL.dirty?'Salvataggio online…':'Salvato online · '+nm);
+  var oth=CL.role!=='viewer'?scoutOther():null;
+  setSaveState(!navigator.onLine?'Offline · salvo online appena torna la rete':oth?'In diretta · fa lo scout '+scoutName(oth):CL.role==='viewer'?'Solo visione · '+nm+' (in diretta)':CL.dirty?'Salvataggio online…':'Salvato online · '+nm);
 }
 
 /* ---- spazi di lavoro: ogni squadra ha la sua partita in corso e il suo archivio su questo dispositivo ---- */
@@ -114,7 +126,7 @@ function pullAll(){
   var id=CL.team;if(!id)return Promise.resolve();
   return Promise.all([
     CL.sb.from('teams').select('id,name,roster,roster_updated').eq('id',id).single(),
-    CL.sb.from('matches').select('id,data,status,updated').eq('team_id',id).eq('deleted',false),
+    CL.sb.from('matches').select('id,data,status,updated,scout_id,scout_at').eq('team_id',id).eq('deleted',false),
     CL.sb.from('matches').select('id').eq('team_id',id).eq('deleted',true)
   ]).then(function(rs){
     if(CL.team!==id)return;
@@ -124,7 +136,7 @@ function pullAll(){
     var rows=rs[1].data||[];
     /* partite eliminate da altri: le tolgo anche qui e non le ricarico più (niente "ritorni" da copie vecchie) */
     ((rs[2]&&rs[2].data)||[]).forEach(function(m){CLS.gone[m.id]=1;ch=mergeRow({id:m.id,deleted:true,data:{}})||ch});
-    rows.forEach(function(m){ch=mergeRow(m,true)||ch});
+    rows.forEach(function(m){if(m.id===state.mid)setSc(m);ch=mergeRow(m,true)||ch});
     pickLive(rows);
     if(canWrite()&&CLS.askedUp!==id){
       var loc=arch.filter(function(m){return CLS.synced[m.id]==null&&!CLS.skip[m.id]&&!rows.some(function(r){return r.id===m.id})});
@@ -154,18 +166,19 @@ function mergeRow(m,quiet){
 }
 function pickLive(rows){
   var lv=rows.filter(function(m){return m.status==='live'&&m.id!==state.mid&&!arch.some(function(a){return a.id===m.id})}).sort(function(a,b){return (b.updated||0)-(a.updated||0)})[0]||null;
-  if(lv&&!hasData()){adopt(lv.data);state.mid=lv.id;lsSave();CL.live=null;return}
-  CL.live=lv?{id:lv.id,opp:(lv.data.meta&&lv.data.meta.opp)||'',sc:lv.data.score||{},updated:lv.updated,data:lv.data}:null;
+  if(lv&&!hasData()){adopt(lv.data);state.mid=lv.id;setSc(lv);lsSave();CL.live=null;return}
+  CL.live=lv?{id:lv.id,opp:(lv.data.meta&&lv.data.meta.opp)||'',sc:lv.data.score||{},updated:lv.updated,data:lv.data,scout_id:lv.scout_id,scout_at:lv.scout_at}:null;
 }
 function startRt(){
   stopRt();var id=CL.team;if(!id||!CL.sb.channel)return;
   CL.ch=CL.sb.channel('team-'+id)
     .on('postgres_changes',{event:'*',schema:'public',table:'matches',filter:'team_id=eq.'+id},function(p){
       if(CL.team!==id)return;var m=p.new&&p.new.id?p.new:null;if(!m)return;
+      if(m.id===state.mid){var was=scoutOther();setSc(m);if(!was&&scoutOther()&&(state.updated||0)>(CLS.synced[state.mid]||0)&&hasData()){lostLock();return}if(!!was!==!!scoutOther()){if(!scoutOther())ui.flash={t:'La partita è di nuovo libera: puoi fare lo scout.',c:'var(--mute)'};else ui.flash={t:'Ora fa lo scout '+scoutName(CL.sc.by)+': segui la partita in diretta.',c:'var(--mute)'};render()}}
       if(m.deleted){CLS.gone[m.id]=1;clSave();mergeRow({id:m.id,deleted:true,data:{}});render();return}
       if(m.status==='live'&&m.id!==state.mid&&!arch.some(function(a){return a.id===m.id})){
-        if(!hasData()){adopt(m.data);state.mid=m.id;lsSave();CL.live=null;render();return}
-        CL.live={id:m.id,opp:(m.data.meta&&m.data.meta.opp)||'',sc:m.data.score||{},updated:m.updated,data:m.data};render();return}
+        if(!hasData()){adopt(m.data);state.mid=m.id;setSc(m);lsSave();CL.live=null;render();return}
+        CL.live={id:m.id,opp:(m.data.meta&&m.data.meta.opp)||'',sc:m.data.score||{},updated:m.updated,data:m.data,scout_id:m.scout_id,scout_at:m.scout_at};render();return}
       if(mergeRow(m))render()})
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'teams',filter:'id=eq.'+id},function(p){if(CL.team===id&&applyRoster(p.new))render()})
     .on('postgres_changes',{event:'*',schema:'public',table:'team_members',filter:'team_id=eq.'+id},function(){if(CL.team!==id)return;loadTeams().then(function(){
@@ -179,16 +192,26 @@ function stopRt(){if(CL.ch&&CL.sb){try{CL.sb.removeChannel(CL.ch)}catch(e){}}CL.
 function schedUp(){if(!canWrite())return;CL.dirty=true;clearTimeout(CL.tUp);CL.tUp=setTimeout(upNow,1200);clStatus()}
 function upNow(){
   if(!canWrite()||!navigator.onLine){clStatus();return}
+  if(scoutOther()){CL.dirty=false;clStatus();return}
   var id=CL.team,jobs=[];
   if(hasData()){
     if(!state.mid){state.mid=newId();lsSave()}
     var b=stBody(),up=b.updated;
-    jobs.push(CL.sb.from('matches').upsert({id:state.mid,team_id:id,data:b,status:'live',updated:up,deleted:false}).then(function(r){if(r.error)throw r.error;CLS.synced[b.mid]=up}));
+    jobs.push(CL.sb.from('matches').upsert({id:state.mid,team_id:id,data:b,status:'live',updated:up,deleted:false}).then(function(r){if(r.error)throw r.error;CLS.synced[b.mid]=up;CL.lastUp=Date.now();CL.sc={id:b.mid,by:CL.user.id,at:Date.now()}}));
   }
   if(JSON.stringify(rosterObj())!==CL.rosterJson)jobs.push(upRoster());
   CL.dirty=false;clStatus();
-  Promise.all(jobs).then(function(){clSave();clStatus()},function(e){CL.dirty=true;CL.msg=clErr(e);clStatus();renderCloud()});
+  Promise.all(jobs).then(function(){clSave();clStatus()},function(e){if(/match_locked/.test((e&&e.message)||String(e))){CL.dirty=false;lostLock();return}CL.dirty=true;CL.msg=clErr(e);clStatus();renderCloud()});
 }
+/* segnale di presenza dello scout: senza azioni da 45 s, dico al server che ci sono ancora */
+function scoutBeat(){
+  if(!CL.sb||!CL.user||!canWrite()||!state.mid||!navigator.onLine||!hasData()||scoutOther())return;
+  if(!CLS.synced[state.mid]&&!CL.lastUp)return;
+  if(Date.now()-(CL.lastUp||0)<45000)return;
+  CL.lastUp=Date.now();
+  CL.sb.rpc('take_match',{p_id:state.mid,p_force:false}).then(function(r){var d=r&&r.data;if(d&&d.scout_id){var was=scoutOther();CL.sc={id:state.mid,by:d.scout_id,at:Date.parse(d.scout_at)||Date.now()};if(!!was!==!!scoutOther())render()}},function(){});
+}
+setInterval(scoutBeat,15000);
 function upRoster(){
   var js=JSON.stringify(rosterObj()),now=Date.now(),id=CL.team;
   return CL.sb.from('teams').update({roster:rosterObj(),roster_updated:now}).eq('id',id).then(function(r){if(r.error)throw r.error;CL.rosterJson=js;CLS.rosterAt[id]=now;clSave()});
@@ -210,10 +233,11 @@ function upArch(all){
 HOOK.persist=function(){if(CL.team){if(canWrite())schedUp();else clStatus()}};
 HOOK.arch=function(){if(CL.team&&canWrite()){clearTimeout(CL.tAr);CL.tAr=setTimeout(function(){upArch(false)},800)}};
 HOOK.ro=function(b,a){
-  if(!CL.team||CL.role!=='viewer')return false;
+  var other=CL.role!=='viewer'?scoutOther():null;
+  if(!CL.team||(CL.role!=='viewer'&&!other))return false;
   if(b.hasAttribute('data-tab')||b.id==='pdf'||b.id==='xlsx')return false;
-  if(a&&(/^cl/.test(a)||['fset','ffund','zo','fpl','sfund','spl','tout','toclose','toall','bench','bkexp','gotoset'].indexOf(a)>=0))return false;
-  ui.flash={t:'Sei in sola visione: vedi la partita in diretta ma non puoi modificarla.',c:'var(--mute)'};render();return true;
+  if(a&&(/^cl/.test(a)||['fset','ffund','zo','fpl','sfund','spl','tout','toclose','toall','bench','bkexp','gotoset','evall','evclose','evset','evback','evnone'].indexOf(a)>=0))return false;
+  ui.flash={t:other?'Questa partita la sta seguendo come scout '+scoutName(other)+': la vedi in diretta. Per subentrare tocca «Prendi lo scout» in alto.':'Sei in sola visione: vedi la partita in diretta ma non puoi modificarla.',c:'var(--mute)'};render();return true;
 };
 
 /* ---- azioni ---- */
@@ -403,6 +427,8 @@ function renderLiveBar(){
     el.innerHTML='<span>Salva online e condividi con il coach</span><span class="clb"><button class="pri" data-act="clopen">Accedi</button><button class="x" data-act="clhide" aria-label="Nascondi">✕</button></span>';return}
   var t=CL.teams.filter(function(x){return x.id===CL.team})[0];
   el.hidden=false;el.className='cllive';
+  var oth=CL.role!=='viewer'?scoutOther():null;
+  if(oth){el.innerHTML='<span>👁 In diretta · scout: '+escH(scoutName(oth))+'</span><span class="clb"><button class="pri" data-act="clclaim">'+(CL.claimArm?'Tocca ancora: subentra':'Prendi lo scout')+'</button></span>';return}
   el.innerHTML='<span class="cltn" data-act="clgoteam" role="button">'+(t?(CL.role==='viewer'?'👁 ':'☁ ')+escH(t.name)+' <small>· '+ROLEL[t.role].toLowerCase()+'</small>':'☁ Nessuna squadra attiva')+'</span><span class="clb">'+(CL.live?'<button data-act="clfollow">Partita in corso: apri</button>':'')+'<button data-act="clopen">Account</button></span>';
 }
 HOOK.click=function(b,a){
@@ -443,8 +469,14 @@ HOOK.click=function(b,a){
     if(b.getAttribute('data-v')==='1'){CLS.askedUp=j.id;clSave();switchTeam(j.id,{carry:true});upArch(true);schedUp()}
     else switchTeam(j.id,{keepRoster:false});
     CL.msg='Sei entrato in «'+j.name+'».';renderCloud();return true}
+  if(a==='clclaim'){if(!CL.claimArm){CL.claimArm=true;render();setTimeout(function(){CL.claimArm=false;render()},5000);return true}
+    CL.claimArm=false;var mid=state.mid;if(!mid)return true;
+    CL.sb.rpc('take_match',{p_id:mid,p_force:true}).then(function(r){if(r.error)throw r.error;var d=r.data||{};
+      if(d.ok){CL.sc={id:mid,by:CL.user.id,at:Date.now()};CL.lastUp=Date.now();ui.flash={t:'Ora fai tu lo scout di questa partita.',c:COL['+']}}
+      else ui.flash={t:'Non riesco a prendere lo scout di questa partita.',c:'var(--o-err)'};render()},function(e){ui.flash={t:clErr(e),c:'var(--o-err)'};render()});
+    return true}
   if(a==='clfollow'){var lv=CL.live;if(!lv)return true;
     if(hasData()&&canWrite()){var sn=snapMatch();arch=arch.filter(function(m){return m.id!==sn.id});arch.push(sn);arSave()}else if(hasData()){wsStash('local-'+Date.now())}
-    adopt(lv.data);state.mid=lv.id;lsSave();CL.live=null;ui.tab='scout';render();return true}
+    adopt(lv.data);state.mid=lv.id;CL.sc={id:lv.id,by:lv.scout_id||null,at:lv.scout_at?Date.parse(lv.scout_at):0};lsSave();CL.live=null;ui.tab='scout';render();return true}
   return false;
 };
