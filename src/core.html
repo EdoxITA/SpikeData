@@ -753,14 +753,19 @@ function zhas(e){return e.z&&(e.f==='B'?!!e.z.b:(e.z.a||e.z.b))}
 var SVL={5:'Sinistra',6:'Centro',1:'Destra'};
 function zbtn(side,z,cur,lb){return '<button class="zc'+(side==='th'?' th':'')+((z===5||z===6||z===1)?' bk':'')+(lb?' lbl':'')+'" data-act="zone" data-s="'+side+'" data-z="'+z+'" aria-pressed="'+(cur===z)+'" aria-label="'+(lb?'Battuta da '+lb.toLowerCase():'Zona '+z+(side==='th'?' loro':' nostra'))+'">'+(lb||z)+'</button>'}
 /* zona di partenza dell'attacco in base alla posizione in campo: davanti S 4, C 3, O e P 2; dietro O e P 1, S 6 (pipe), C 5 */
+/* palleggio in 1 e noi in ricezione: sul primo attacco dello scambio l'opposto attacca da 4 e la banda da 2 (non c'è il tempo di scambiarsi) */
+function p1RecFirst(sp){
+  if(sp!==0)return false;var set=state.set;if(srvNow(set)!=='them')return false;
+  var ri=ralOf(set).length;return !state.events.some(function(e){return e.set===set&&e.ri===ri&&e.f==='A'});
+}
 function atkZone(n){
   if(!state.rot||!lu(state.set)||isLib(n))return null;
   var C=courtAt(state.set);if(!C)return null;
   var i=C.view.indexOf(n);if(i<0)return null;
   var sp=-1,k;for(k=0;k<6;k++)if(roleOf(C.pos[k])==='P'){sp=k;break}
   if(sp<0)return POSFR[i]?[4,3,2][POSCOL[i]]:[5,6,1][POSCOL[i]];
-  var r=RELL[(i-sp+6)%6].charAt(0);
-  return POSFR[i]?(r==='S'?4:r==='C'?3:2):(r==='S'?6:r==='C'?5:1);
+  var r=RELL[(i-sp+6)%6].charAt(0),sw=p1RecFirst(sp);
+  return POSFR[i]?(r==='S'?(sw?2:4):r==='C'?3:(sw&&r==='O'?4:2)):(r==='S'?6:r==='C'?5:1);
 }
 function tgList(C,sel){
   var out=[];
@@ -2012,10 +2017,10 @@ function fmPos(C,kind){
   if(kind!=='rec'&&kind!=='def'&&kind!=='att')return null;
   var sp=-1,i;for(i=0;i<6;i++)if(roleOf(C.pos[i])==='P'){sp=i;break}
   if(sp<0)return null;
-  var out=[];
+  var out=[],sw=kind==='att'&&p1RecFirst(sp);
   for(i=0;i<6;i++){var n=C.view[i],L=RELL[(i-sp+6)%6],r=L.charAt(0),fr=POSFR[i],xy;
     if(kind==='rec')xy=SCH[sp+1][L];
-    else if(kind==='att')xy=ATTZ[fr?(r==='S'?4:r==='C'?3:r==='O'?2:23):(r==='P'?'P':r==='C'?5:r==='S'?6:1)];
+    else if(kind==='att')xy=ATTZ[fr?(r==='S'?(sw?2:4):r==='C'?3:r==='O'?(sw?4:2):23):(r==='P'?'P':r==='C'?5:r==='S'?6:1)];
     else xy=DEFZ[fr?(r==='S'?4:r==='C'?3:r==='O'?2:23):(r==='C'?5:r==='S'?6:1)];
     out.push({i:i,n:n,L:n===C.lib?tagOf(n):L,x:xy[0],y:xy[1],rc:r==='S'||(r==='C'&&!fr)})}
   var w=.22,h=.165,it,a,b,k;
