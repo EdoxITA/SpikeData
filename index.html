@@ -584,7 +584,7 @@ var FUND=[
  {k:'R',n:'Ricezione', eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Ricezione brutta'}, ace:'Ace subito'},
  {k:'A',n:'Attacco',   eff:'a', lab:{'+':'Punto','.':'Di là, no punto','-':'Errore / murato'}, dirty:'Sporcato, torna da noi',dirtyS:'Sporcato'},
  {k:'D',n:'Difesa',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Difesa brutta'}, ace:'Errore (punto)'},
- {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}, dirty:'Brutta ma attaccabile',dirtyS:'Brutta, attaccabile',dirtySym:'•'},
+ {k:'Z',n:'Alzata',    eff:'p', lab:{'+':'Buona','.':'Neutra','-':'Errore'}, dirty:'Brutta',dirtyS:'Brutta',dirtySym:'•'},
  {k:'P',n:'Appoggio',  eff:'p', lab:{'+':'Buono','.':'Neutro','-':'Errore'}},
  {k:'M',n:'Muro',       eff:'p', adv:true, lab:{'+':'Muro punto','.':'Muro normale, palla recuperata','-':'Muro sbagliato (fuori da noi)'}}
 ];
@@ -1172,7 +1172,7 @@ function renderStats(){
   renderZoneMap(list);renderZoneDet(list);renderRally();renderRotStats();renderSetStats();renderSubStats();renderFaults();
   $('effNote').textContent=F.eff==='a'?
     (F.k==='B'?'Efficienza = (ace − errori) ÷ battute: sotto lo 0% vuol dire più errori che ace. Ace % e Err. % = ace ed errori sul totale delle battute.':'Efficienza = (punti − errori) ÷ attacchi: sotto lo 0% vuol dire più errori che punti. Punti % e Err. % = punti ed errori sul totale.'):
-    (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':F.k==='Z'?'Positività = alzate buone (+) ÷ totali. “Di cui brutte” = alzate brutte ma attaccabili: sono già contate tra le neutre (•), nessun punto.':F.k==='D'?'Positività = difese buone (+) ÷ totali. Brutta = difesa sbagliata ma la palla resta in gioco (nessun punto). Errore = punto subito.':'Positività = azioni buone (+) ÷ azioni totali.');
+    (F.k==='R'?'Positività = ricezioni buone (+) ÷ totali. Brutta = ricezione sbagliata ma tenuta in campo (nessun punto). Ace = ace subito (punto per loro).':F.k==='Z'?'Positività = alzate buone (+) ÷ totali. “Di cui brutte” = alzate brutte: sono già contate tra le neutre (•), nessun punto.':F.k==='D'?'Positività = difese buone (+) ÷ totali. Brutta = difesa sbagliata ma la palla resta in gioco (nessun punto). Errore = punto subito.':'Positività = azioni buone (+) ÷ azioni totali.');
 }
 
 var YEL='#e0a800',YELP=[.88,.66,0];
