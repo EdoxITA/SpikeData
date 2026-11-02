@@ -1,6 +1,6 @@
 # Changelog
 
-## Non pubblicato
+## Versione 30 · 2 novembre 2026
 - Nuovo tasto “Punto avversario (attacco)” (modalità avanzata, accanto a “Errore avversario”): punto a loro e scelta delle zone (da dove attaccano e dove cade la palla nel nostro campo). Anche un punto “a loro” messo a mano si può completare come attacco avversario. In Statistiche, PDF ed Excel: totale e conteggio per zona.
 
 ## Versione 29 · 2 novembre 2026
